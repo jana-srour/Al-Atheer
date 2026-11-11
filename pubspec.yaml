@@ -1,0 +1,36 @@
+name: al_atheer
+description: "A production cross-platform app for an Islamic Publisher powered by Supabase & Internet Archive."
+publish_to: 'none'
+version: 0.1.0
+
+environment:
+  sdk: ^3.10.1
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+  intl: any
+  file_picker: ^8.0.0
+  supabase_flutter: ^2.5.0
+  provider: ^6.1.2
+  just_audio: ^0.9.36
+  just_audio_background: ^0.0.1-beta.11
+  chewie: ^1.8.1
+  video_player: ^2.8.5
+  flutter_pdfview: ^1.3.2
+  share_plus: ^9.0.0
+  url_launcher: ^6.2.5
+  shared_preferences: ^2.2.3
+  cupertino_icons: ^1.0.6
+  http: ^1.2.0
+  path_provider: ^2.1.2
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+  
+flutter:
+  uses-material-design: true
