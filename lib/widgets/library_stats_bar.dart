@@ -5,9 +5,14 @@ import '../providers/settings_provider.dart';
 import 'archive_ingestion_modal.dart';
 
 class LibraryStatsBar extends StatelessWidget {
-  final Function(String type) onSelectType;
+  final Function(String type)? onSelectType;
+  final bool showStats;
 
-  const LibraryStatsBar({super.key, required this.onSelectType});
+  const LibraryStatsBar({
+    super.key,
+    this.onSelectType,
+    this.showStats = true,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -84,7 +89,8 @@ class LibraryStatsBar extends StatelessWidget {
         ],
 
         // Informative Snapshot Stats Row
-        SingleChildScrollView(
+        if (showStats && onSelectType != null)
+          SingleChildScrollView(
           scrollDirection: Axis.horizontal,
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
           child: Row(
@@ -95,7 +101,7 @@ class LibraryStatsBar extends StatelessWidget {
                 icon: Icons.grid_view_rounded,
                 color: radiantGold,
                 isSelected: resProv.selectedType == 'all',
-                onTap: () => onSelectType('all'),
+                onTap: () => onSelectType!('all'),
                 isDark: isDark,
               ),
               const SizedBox(width: 8),
@@ -105,7 +111,7 @@ class LibraryStatsBar extends StatelessWidget {
                 icon: Icons.menu_book_rounded,
                 color: Colors.redAccent,
                 isSelected: resProv.selectedType == 'pdf',
-                onTap: () => onSelectType('pdf'),
+                onTap: () => onSelectType!('pdf'),
                 isDark: isDark,
               ),
               const SizedBox(width: 8),
@@ -115,7 +121,7 @@ class LibraryStatsBar extends StatelessWidget {
                 icon: Icons.audiotrack_rounded,
                 color: radiantGold,
                 isSelected: resProv.selectedType == 'audio',
-                onTap: () => onSelectType('audio'),
+                onTap: () => onSelectType!('audio'),
                 isDark: isDark,
               ),
               const SizedBox(width: 8),
@@ -125,7 +131,7 @@ class LibraryStatsBar extends StatelessWidget {
                 icon: Icons.videocam_rounded,
                 color: Colors.purpleAccent,
                 isSelected: resProv.selectedType == 'video',
-                onTap: () => onSelectType('video'),
+                onTap: () => onSelectType!('video'),
                 isDark: isDark,
               ),
               const SizedBox(width: 8),
@@ -135,7 +141,7 @@ class LibraryStatsBar extends StatelessWidget {
                 icon: Icons.format_quote_rounded,
                 color: radiantGold,
                 isSelected: resProv.selectedType == 'text',
-                onTap: () => onSelectType('text'),
+                onTap: () => onSelectType!('text'),
                 isDark: isDark,
               ),
             ],

@@ -1,6 +1,10 @@
+import 'dart:math';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart';
+import '../providers/resource_provider.dart';
 
 class DailyWisdomCard extends StatefulWidget {
   const DailyWisdomCard({super.key});
@@ -11,40 +15,20 @@ class DailyWisdomCard extends StatefulWidget {
 
 class _DailyWisdomCardState extends State<DailyWisdomCard> {
   bool _isExpanded = true;
-  int _currentIndex = 0;
+  String? _selectedWisdomKey;
 
-  static const List<Map<String, String>> _wisdomList = [
-    {
-      'title': 'فضل العلم الشرعي',
-      'quote': 'مَن سَلَكَ طَرِيقاً يَلْتَمِسُ فِيهِ عِلْماً، سَهَّلَ اللَّهُ لَهُ بِهِ طَرِيقاً إِلَى الْجَنَّةِ.',
-      'source': 'صحيح مسلم • عن أبي هريرة رضي الله عنه',
-    },
-    {
-      'title': 'بركة القرآن الكريم',
-      'quote': 'خَيْرُكُمْ مَنْ تَعَلَّمَ الْقُرْآنَ وَعَلَّمَهُ.',
-      'source': 'صحيح البخاري • عن عثمان بن عفان رضي الله عنه',
-    },
-    {
-      'title': 'حكمة الإمام الشافعي',
-      'quote': 'العِلْمُ مَا نَفَعَ، لَيْسَ العِلْمُ مَا حُفِظَ.',
-      'source': 'سير أعلام النبلاء • للإمام الشافعي رحمه الله',
-    },
-    {
-      'title': 'نور البصيرة',
-      'quote': 'مَن أَرادَ صَفاءَ قَلبِهِ فَلْيُؤثِرِ اللهَ على شَهوَتِهِ.',
-      'source': 'الفوائد • لابن القيم رحمه الله',
-    },
-    {
-      'title': 'العمل الصالح',
-      'quote': 'أَحَبُّ الأَعْمَالِ إِلَى اللهِ أَدْوَمُهَا وَإِنْ قَلَّ.',
-      'source': 'متفق عليه • عن عائشة رضي الله عنها',
-    },
-  ];
+  String _keyFor(Map<String, String> item) =>
+      '${item['title']}\n${item['quote']}\n${item['source']}';
 
-  void _nextWisdom() {
-    setState(() {
-      _currentIndex = (_currentIndex + 1) % _wisdomList.length;
-    });
+  Map<String, String>? _chooseWisdom(List<Map<String, String>> wisdom) {
+    if (wisdom.isEmpty) return null;
+    final alternatives = wisdom
+        .where((item) => _keyFor(item) != _selectedWisdomKey)
+        .toList();
+    final choices = alternatives.isEmpty ? wisdom : alternatives;
+    final item = choices[Random().nextInt(choices.length)];
+    _selectedWisdomKey = _keyFor(item);
+    return item;
   }
 
   @override
@@ -52,7 +36,20 @@ class _DailyWisdomCardState extends State<DailyWisdomCard> {
     const radiantGold = Color(0xFFF59E0B);
     const deepNavy = Color(0xFF0F172A);
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final item = _wisdomList[_currentIndex];
+    final provider = context.watch<ResourceProvider>();
+    final wisdom = [...provider.curatedQuotes, ...provider.uploadedQuotes]
+        .where((item) => (item['quote'] ?? '').trim().isNotEmpty)
+        .toList();
+    Map<String, String>? item;
+    for (final candidate in wisdom) {
+      if (_keyFor(candidate) == _selectedWisdomKey) {
+        item = candidate;
+        break;
+      }
+    }
+    item ??= _chooseWisdom(wisdom);
+    final quoteText = item?['quote'];
+    final sourceText = item?['source'] ?? '';
 
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -115,7 +112,9 @@ class _DailyWisdomCardState extends State<DailyWisdomCard> {
                     icon: const Icon(Icons.sync, size: 16, color: radiantGold),
                     tooltip: 'درة أخرى',
                     visualDensity: VisualDensity.compact,
-                    onPressed: _nextWisdom,
+                    onPressed: () => setState(() {
+                      _selectedWisdomKey = null;
+                    }),
                   ),
                   Icon(
                     _isExpanded ? Icons.expand_less : Icons.expand_more,
@@ -135,7 +134,7 @@ class _DailyWisdomCardState extends State<DailyWisdomCard> {
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
                   Text(
-                    item['title']!,
+                    item?['title'] ?? 'لا توجد حكم متاحة حالياً',
                     style: const TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.bold,
@@ -144,7 +143,7 @@ class _DailyWisdomCardState extends State<DailyWisdomCard> {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    '«${item['quote']}»',
+                    item == null ? 'أضف حكماً من مركز الإدارة أو انشر مادة نصية.' : '«${item['quote']}»',
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       fontSize: 15,
@@ -155,7 +154,7 @@ class _DailyWisdomCardState extends State<DailyWisdomCard> {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    item['source']!,
+                    sourceText,
                     style: TextStyle(
                       fontSize: 11,
                       color: isDark ? Colors.grey.shade400 : Colors.grey.shade600,
@@ -173,10 +172,10 @@ class _DailyWisdomCardState extends State<DailyWisdomCard> {
                         ),
                         icon: const Icon(Icons.copy, size: 14),
                         label: const Text('نسخ', style: TextStyle(fontSize: 11)),
-                        onPressed: () {
+                        onPressed: quoteText == null ? null : () {
                           Clipboard.setData(
                             ClipboardData(
-                              text: '${item['quote']}\n— ${item['source']}',
+                              text: '$quoteText\n— $sourceText',
                             ),
                           );
                           ScaffoldMessenger.of(context).showSnackBar(
@@ -196,8 +195,8 @@ class _DailyWisdomCardState extends State<DailyWisdomCard> {
                         ),
                         icon: const Icon(Icons.share, size: 14),
                         label: const Text('مشاركة', style: TextStyle(fontSize: 11)),
-                        onPressed: () {
-                          Share.share('${item['quote']}\n— ${item['source']}');
+                        onPressed: quoteText == null ? null : () {
+                          Share.share('$quoteText\n— $sourceText');
                         },
                       ),
                     ],

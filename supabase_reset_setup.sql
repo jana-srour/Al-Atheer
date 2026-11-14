@@ -1,7 +1,8 @@
 -- DESTRUCTIVE APP-SCHEMA RESET
 -- This drops and recreates only the Al-Atheer public tables and RPCs below.
 -- It deletes all rows in profiles, admin_email_invites, categories, and
--- resources. It does NOT delete auth.users, Supabase Storage objects/buckets,
+-- resources, playlists, playlist_items, and curated_quotes. It does NOT
+-- delete auth.users, archive_credentials, Supabase Storage objects/buckets,
 -- or unrelated public-schema objects.
 --
 -- Run in Supabase SQL Editor as a project owner. Back up data first.
@@ -10,6 +11,9 @@ begin;
 
 drop trigger if exists create_profile_after_signup on auth.users;
 
+drop table if exists public.playlist_items;
+drop table if exists public.playlists;
+drop table if exists public.curated_quotes;
 drop table if exists public.resources;
 drop table if exists public.categories;
 drop table if exists public.admin_email_invites;

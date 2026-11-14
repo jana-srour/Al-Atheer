@@ -8,6 +8,8 @@ import '../../providers/resource_provider.dart';
 import '../../providers/settings_provider.dart';
 import '../../services/archive_upload_service.dart';
 import 'admin_upload_widget.dart';
+import 'admin_playlists_screen.dart';
+import 'admin_quotes_screen.dart';
 
 class AdminDashboardScreen extends StatefulWidget {
   const AdminDashboardScreen({super.key});
@@ -313,7 +315,9 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
                 } catch (error) {
                   if (ctx.mounted) {
                     ScaffoldMessenger.of(ctx).showSnackBar(
-                      SnackBar(content: Text('Could not save credentials: $error')),
+                      SnackBar(
+                        content: Text('Could not save credentials: $error'),
+                      ),
                     );
                   }
                 }
@@ -388,6 +392,14 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
           ),
           const SizedBox(width: 6),
           IconButton(
+            icon: const Icon(Icons.queue_music_rounded, color: Colors.white),
+            tooltip: 'إدارة قوائم التشغيل',
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const AdminPlaylistsScreen()),
+            ),
+          ),
+          IconButton(
             icon: const Icon(Icons.category_outlined, color: Colors.white),
             tooltip: 'إدارة التصنيفات',
             onPressed: _showCategoryManagerDialog,
@@ -440,6 +452,33 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
                   isDark: isDark,
                 ),
                 const SizedBox(height: 16),
+                Wrap(
+                  spacing: 10,
+                  runSpacing: 10,
+                  children: [
+                    OutlinedButton.icon(
+                      onPressed: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const AdminPlaylistsScreen(),
+                        ),
+                      ),
+                      icon: const Icon(Icons.queue_music_rounded),
+                      label: const Text('إنشاء وإدارة قوائم التشغيل'),
+                    ),
+                    OutlinedButton.icon(
+                      onPressed: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const AdminQuotesScreen(),
+                        ),
+                      ),
+                      icon: const Icon(Icons.format_quote_rounded),
+                      label: const Text('إدارة درر اليوم'),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
                 // Full Luxury Publishing Studio
                 AdminUploadWidget(
                   onPublished: () {

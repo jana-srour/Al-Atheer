@@ -15,16 +15,15 @@ class SettingsScreen extends StatefulWidget {
 
 class _SettingsScreenState extends State<SettingsScreen> {
   bool _hasArchiveKeys = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _checkArchiveKeys();
-  }
+  String? _credentialsUserId;
 
   Future<void> _checkArchiveKeys() async {
+    final auth = context.read<AuthProvider>();
+    final userId = auth.user?.id;
+    if (!auth.isAdmin || userId == null) return;
     final hasKeys = await ArchiveUploadService.hasCredentials();
-    if (mounted) setState(() => _hasArchiveKeys = hasKeys);
+    if (!mounted || context.read<AuthProvider>().user?.id != userId) return;
+    setState(() => _hasArchiveKeys = hasKeys);
   }
 
   Future<void> _showAdminManagement() async {
@@ -244,7 +243,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
             children: [
               Text(
                 strings.text('s3_desc'),
-                style: TextStyle(fontSize: 13, color: Colors.grey),
+                style: TextStyle(
+                  fontSize: 13,
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
               ),
               const SizedBox(height: 12),
               InkWell(
@@ -357,13 +359,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final strings = AppStrings.of(context);
     const radiantGold = Color(0xFFF59E0B);
     const deepEmerald = Color(0xFF0F172A);
+    if (auth.isAdmin && _credentialsUserId != auth.user?.id) {
+      _credentialsUserId = auth.user?.id;
+      _checkArchiveKeys();
+    }
 
     return Scaffold(
       appBar: AppBar(title: Text(strings.text('settings'))),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          // Archive.org Ingestion Timer Section (Crucial requirement)
+          if (auth.isAdmin) ...[
           _buildSectionHeader(context, strings.text('archive_timer')),
           Card(
             child: Padding(
@@ -395,7 +401,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         : 'Archive.org takes time to derive and cache media. This timer prevents 404 Not Found errors.',
                     style: TextStyle(
                       fontSize: 12,
-                      color: Colors.grey.shade600,
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
                       height: 1.4,
                     ),
                   ),
@@ -464,6 +470,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
           ),
           const SizedBox(height: 20),
+          ],
 
           // Theme Section
           _buildSectionHeader(context, strings.text('appearance')),
@@ -594,7 +601,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       _hasArchiveKeys
                           ? (isAr
                                 ? 'المفاتيح محفوظة وجاهزة للرفع'
-                                : 'Saved on this device and ready for uploads')
+                                : 'Saved to your admin account and ready for uploads')
                           : (isAr
                                 ? 'المفاتيح غير مهيأة بعد'
                                 : 'Not configured yet'),
@@ -716,7 +723,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       ? 'المكتبة الإسلامية والوسائط الرقمية • مدعوم بأرشيف الإنترنت و Supabase'
                       : 'Islamic Digital Library & Media • Powered by Archive.org & Supabase',
                   textAlign: TextAlign.center,
-                  style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
+                  style: TextStyle(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    fontSize: 12,
+                  ),
                 ),
               ],
             ),

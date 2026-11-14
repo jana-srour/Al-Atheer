@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/resource_model.dart';
-import '../providers/auth_provider.dart';
 import '../providers/resource_provider.dart';
+import '../providers/auth_provider.dart';
 import '../providers/settings_provider.dart';
 import '../widgets/audio_player_widget.dart';
 import '../widgets/daily_wisdom_card.dart';
@@ -12,6 +12,7 @@ import '../widgets/library_stats_bar.dart';
 import '../widgets/pdf_viewer_widget.dart';
 import '../widgets/text_quote_widget.dart';
 import '../widgets/video_player_widget.dart';
+import 'playlist_library_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -40,7 +41,9 @@ class _HomeScreenState extends State<HomeScreen>
     _tabController = TabController(length: _tabs.length, vsync: this);
     _tabController.addListener(() {
       if (_tabController.indexIsChanging) {
-        setState(() => _isFavoritesOnly = false);
+        setState(() {
+          _isFavoritesOnly = false;
+        });
         final resProvider = Provider.of<ResourceProvider>(
           context,
           listen: false,
@@ -58,17 +61,32 @@ class _HomeScreenState extends State<HomeScreen>
   }
 
   void _onSelectStatType(String type) {
-    setState(() => _isFavoritesOnly = false);
+    if (type == 'playlists') {
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => const PlaylistLibraryScreen()),
+      );
+      return;
+    }
+
+    setState(() {
+      _isFavoritesOnly = false;
+    });
     final index = _tabs.indexWhere((t) => t['type'] == type);
     if (index != -1) {
       _tabController.animateTo(index);
     }
   }
 
-  void _toggleFavorites() {
+  void _toggleFavorites(ResourceProvider resourceProvider) {
+    final showFavorites = !_isFavoritesOnly;
     setState(() {
-      _isFavoritesOnly = !_isFavoritesOnly;
+      _isFavoritesOnly = showFavorites;
     });
+    if (showFavorites) {
+      _searchController.clear();
+      resourceProvider.resetResourceFilters();
+    }
   }
 
   @override
@@ -102,7 +120,6 @@ class _HomeScreenState extends State<HomeScreen>
     }
 
     final featuredItem = displayList.isNotEmpty ? displayList.first : null;
-
     return Scaffold(
       body: NestedScrollView(
         headerSliverBuilder: (context, innerBoxIsScrolled) {
@@ -111,7 +128,7 @@ class _HomeScreenState extends State<HomeScreen>
             SliverToBoxAdapter(
               child: IslamicHeaderWidget(
                 isFavoritesSelected: _isFavoritesOnly,
-                onToggleFavorites: _toggleFavorites,
+                onToggleFavorites: () => _toggleFavorites(resourceProv),
                 onOpenAdmin: () async {
                   await Navigator.pushNamed(context, '/admin');
                   if (context.mounted) {
@@ -120,11 +137,46 @@ class _HomeScreenState extends State<HomeScreen>
                   }
                 },
                 onOpenSettings: () => Navigator.pushNamed(context, '/settings'),
+                onOpenPlaylists: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const PlaylistLibraryScreen(),
+                  ),
+                ),
               ),
             ),
 
             // Daily Wisdom Inspiring Card
             const SliverToBoxAdapter(child: DailyWisdomCard()),
+
+            if (settings.favoriteSyncError != null)
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+                  child: Card(
+                    color: Theme.of(context).colorScheme.errorContainer,
+                    child: ListTile(
+                      leading: Icon(
+                        Icons.cloud_off_outlined,
+                        color: Theme.of(context).colorScheme.onErrorContainer,
+                      ),
+                      title: Text(
+                        settings.isArabic
+                            ? 'تعذرت مزامنة المفضلة'
+                            : 'Favorites sync is unavailable',
+                      ),
+                      subtitle: Text(settings.favoriteSyncError!),
+                      trailing: IconButton(
+                        tooltip: settings.isArabic
+                            ? 'إعادة المحاولة'
+                            : 'Retry sync',
+                        onPressed: settings.retryFavoriteSync,
+                        icon: const Icon(Icons.refresh),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
 
             // Search Bar & Horizontal Category Filter
             SliverToBoxAdapter(
@@ -235,9 +287,7 @@ class _HomeScreenState extends State<HomeScreen>
             ),
 
             // Library Stats Bar with Ingestion Alert
-            SliverToBoxAdapter(
-              child: LibraryStatsBar(onSelectType: _onSelectStatType),
-            ),
+            SliverToBoxAdapter(child: LibraryStatsBar(showStats: false)),
 
             // Featured Hero Highlight (only when not searching or filtering by favorites)
             if (featuredItem != null &&
@@ -249,37 +299,14 @@ class _HomeScreenState extends State<HomeScreen>
                 child: FeaturedHeroCard(resource: featuredItem),
               ),
 
-            // Persistent Tabs bar
-            SliverPersistentHeader(
-              pinned: true,
-              delegate: _SliverTabHeaderDelegate(
-                child: Container(
-                  color: isDark ? const Color(0xFF060D1A) : deepNavy,
-                  child: TabBar(
-                    controller: _tabController,
-                    isScrollable: true,
-                    tabAlignment: TabAlignment.start,
-                    indicatorColor: radiantGold,
-                    indicatorWeight: 3,
-                    labelColor: radiantGold,
-                    unselectedLabelColor: Colors.white60,
-                    labelStyle: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 13,
-                    ),
-                    tabs: _tabs.map((t) {
-                      return Tab(
-                        child: Row(
-                          children: [
-                            Icon(t['icon'] as IconData, size: 16),
-                            const SizedBox(width: 6),
-                            Text(t['title'] as String),
-                          ],
-                        ),
-                      );
-                    }).toList(),
-                  ),
-                ),
+            // A single compact, horizontally scrolling type selector.
+            SliverToBoxAdapter(
+              child: _buildTypeCards(
+                resourceProv,
+                isDark,
+                radiantGold,
+                deepNavy,
+                _onSelectStatType,
               ),
             ),
           ];
@@ -369,17 +396,17 @@ class _HomeScreenState extends State<HomeScreen>
                   itemCount: displayList.length,
                   itemBuilder: (context, index) {
                     final item = displayList[index];
-                    switch (item.type) {
-                      case 'audio':
-                        return AudioPlayerWidget(resource: item);
-                      case 'video':
-                        return VideoPlayerWidget(resource: item);
-                      case 'pdf':
-                        return PdfViewerWidget(resource: item);
-                      case 'text':
-                      default:
-                        return TextQuoteWidget(resource: item);
-                    }
+                    return Center(
+                      child: ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: 1050),
+                        child: switch (item.type) {
+                          'audio' => AudioPlayerWidget(resource: item),
+                          'video' => VideoPlayerWidget(resource: item),
+                          'pdf' => PdfViewerWidget(resource: item),
+                          'text' || _ => TextQuoteWidget(resource: item),
+                        },
+                      ),
+                    );
                   },
                 ),
               ),
@@ -401,27 +428,105 @@ class _HomeScreenState extends State<HomeScreen>
   }
 }
 
-class _SliverTabHeaderDelegate extends SliverPersistentHeaderDelegate {
-  final Widget child;
-  _SliverTabHeaderDelegate({required this.child});
+Widget _buildTypeCards(
+  ResourceProvider provider,
+  bool isDark,
+  Color gold,
+  Color navy,
+  ValueChanged<String> onSelected,
+) {
+  final cards = [
+    ('Audio', 'صوتيات', Icons.mic_none_rounded, 'audio'),
+    ('Video lessons', 'دروس مرئية', Icons.video_library_outlined, 'video'),
+    ('PDF books', 'كتب ومطبوعات', Icons.menu_book_rounded, 'pdf'),
+    ('Quotes', 'أقوال وفوائد', Icons.format_quote_rounded, 'text'),
+    ('All library', 'كل المواد', Icons.auto_stories_outlined, 'all'),
+    ('Playlists', 'قوائم ودورات', Icons.queue_music_rounded, 'playlists'),
+  ];
 
-  @override
-  Widget build(
-    BuildContext context,
-    double shrinkOffset,
-    bool overlapsContent,
-  ) {
-    return child;
-  }
+  return Padding(
+    padding: const EdgeInsets.fromLTRB(14, 5, 14, 10),
+    child: Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 1050),
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final itemWidth = constraints.maxWidth >= 850
+                ? (constraints.maxWidth - 8 * (cards.length - 1)) / cards.length
+                : 128.0;
+            return SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: [
+                  for (var index = 0; index < cards.length; index++) ...[
+                    if (index > 0) const SizedBox(width: 8),
+                    SizedBox(
+                      width: itemWidth,
+                      child: _buildTypeCard(
+                        card: cards[index],
+                        isSelected: provider.selectedType == cards[index].$4,
+                        isDark: isDark,
+                        gold: gold,
+                        navy: navy,
+                        onTap: () => onSelected(cards[index].$4),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            );
+          },
+        ),
+      ),
+    ),
+  );
+}
 
-  @override
-  double get maxExtent => 48;
-
-  @override
-  double get minExtent => 48;
-
-  @override
-  bool shouldRebuild(covariant _SliverTabHeaderDelegate oldDelegate) {
-    return false;
-  }
+Widget _buildTypeCard({
+  required (String, String, IconData, String) card,
+  required bool isSelected,
+  required bool isDark,
+  required Color gold,
+  required Color navy,
+  required VoidCallback onTap,
+}) {
+  final background = isSelected
+      ? navy
+      : (isDark ? const Color(0xFF1E293B) : Colors.white);
+  final foreground = isSelected ? Colors.white : (isDark ? Colors.white : navy);
+  return Card(
+    margin: EdgeInsets.zero,
+    elevation: isSelected ? 2 : 0,
+    color: background,
+    shape: RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(14),
+      side: BorderSide(color: gold.withValues(alpha: isSelected ? .8 : .3)),
+    ),
+    child: InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(14),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 8),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(card.$3, size: 17, color: isSelected ? gold : foreground),
+            const SizedBox(width: 6),
+            Flexible(
+              child: Text(
+                card.$2,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: foreground,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
 }

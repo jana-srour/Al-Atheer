@@ -26,6 +26,9 @@ class ArchiveUploadService {
   static const String _keyAccessKey = 'archive_s3_access_key';
   static const String _keySecretKey = 'archive_s3_secret_key';
 
+  static String _userPreferenceKey(String key, String userId) =>
+      '${key}_$userId';
+
   // S3 Credentials Management
   static Future<void> saveCredentials({
     required String accessKey,
@@ -42,59 +45,62 @@ class ArchiveUploadService {
       throw ArgumentError('Both Archive.org S3 keys are required.');
     }
 
+    final userId = client.auth.currentUser!.id;
     await client.from('archive_credentials').upsert({
-      'id': true,
+      'user_id': userId,
       'access_key': normalizedAccessKey,
       'secret_key': normalizedSecretKey,
-      'updated_by': client.auth.currentUser!.id,
+      'updated_by': userId,
       'updated_at': DateTime.now().toUtc().toIso8601String(),
-    }, onConflict: 'id');
+    }, onConflict: 'user_id');
 
-    // Keep an installation cache so uploads can continue during a temporary
-    // network outage. Supabase remains the shared source across sign-ins.
+    // Keep an account-scoped cache so uploads can continue during brief outages.
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_keyAccessKey, normalizedAccessKey);
-    await prefs.setString(_keySecretKey, normalizedSecretKey);
+    await prefs.setString(
+      _userPreferenceKey(_keyAccessKey, userId),
+      normalizedAccessKey,
+    );
+    await prefs.setString(
+      _userPreferenceKey(_keySecretKey, userId),
+      normalizedSecretKey,
+    );
   }
 
   static Future<Map<String, String>?> getCredentials() async {
+    final client = Supabase.instance.client;
+    final user = client.auth.currentUser;
+    if (user == null) return null;
+
+    final prefs = await SharedPreferences.getInstance();
+    final accessPreferenceKey = _userPreferenceKey(_keyAccessKey, user.id);
+    final secretPreferenceKey = _userPreferenceKey(_keySecretKey, user.id);
     try {
-      final row = await Supabase.instance.client
+      final row = await client
           .from('archive_credentials')
           .select('access_key, secret_key')
-          .eq('id', true)
+          .eq('user_id', user.id)
           .maybeSingle();
       final access = row?['access_key']?.toString();
       final secret = row?['secret_key']?.toString();
-      if (access != null && access.isNotEmpty &&
-          secret != null && secret.isNotEmpty) {
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.setString(_keyAccessKey, access);
-        await prefs.setString(_keySecretKey, secret);
+      if (access != null &&
+          access.isNotEmpty &&
+          secret != null &&
+          secret.isNotEmpty) {
+        await prefs.setString(accessPreferenceKey, access);
+        await prefs.setString(secretPreferenceKey, secret);
         return {'accessKey': access, 'secretKey': secret};
       }
-    } catch (_) {
-      // A local cache is useful offline and for non-admin screens where RLS
-      // correctly denies access to the shared credentials row.
+    } catch (error) {
+      debugPrint('Could not load saved Archive.org credentials: $error');
     }
 
-    final prefs = await SharedPreferences.getInstance();
-    final access = prefs.getString(_keyAccessKey);
-    final secret = prefs.getString(_keySecretKey);
+    var access = prefs.getString(accessPreferenceKey);
+    var secret = prefs.getString(secretPreferenceKey);
 
     if (access != null &&
         access.isNotEmpty &&
         secret != null &&
         secret.isNotEmpty) {
-      // Migrate keys saved by older app versions from local preferences into
-      // Supabase on the next administrator sign-in.
-      if (Supabase.instance.client.auth.currentUser != null) {
-        try {
-          await saveCredentials(accessKey: access, secretKey: secret);
-        } catch (_) {
-          // Keep using the local copy if the migration cannot reach Supabase.
-        }
-      }
       return {'accessKey': access, 'secretKey': secret};
     }
     return null;
@@ -107,6 +113,15 @@ class ArchiveUploadService {
 
   static Future<void> clearCredentials() async {
     final prefs = await SharedPreferences.getInstance();
+    final userId = Supabase.instance.client.auth.currentUser?.id;
+    if (userId != null) {
+      await Supabase.instance.client
+          .from('archive_credentials')
+          .delete()
+          .eq('user_id', userId);
+      await prefs.remove(_userPreferenceKey(_keyAccessKey, userId));
+      await prefs.remove(_userPreferenceKey(_keySecretKey, userId));
+    }
     await prefs.remove(_keyAccessKey);
     await prefs.remove(_keySecretKey);
   }

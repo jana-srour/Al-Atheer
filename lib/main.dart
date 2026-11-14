@@ -224,6 +224,9 @@ class _AlAtheerAppState extends State<AlAtheerApp> {
           secondary: radiantGold,
           surface: const Color(0xFFF8FAFC),
           surfaceContainerHighest: const Color(0xFFEEF2FF),
+          onSurface: const Color(0xFF0F172A),
+          onSurfaceVariant: const Color(0xFF475569),
+          onPrimary: Colors.white,
         ),
         scaffoldBackgroundColor: const Color(0xFFF1F5F9),
         appBarTheme: const AppBarTheme(
@@ -248,6 +251,10 @@ class _AlAtheerAppState extends State<AlAtheerApp> {
         inputDecorationTheme: InputDecorationTheme(
           filled: true,
           fillColor: Colors.white,
+          labelStyle: const TextStyle(color: Color(0xFF475569)),
+          hintStyle: const TextStyle(color: Color(0xFF64748B)),
+          prefixIconColor: const Color(0xFF475569),
+          suffixIconColor: const Color(0xFF475569),
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(16),
             borderSide: BorderSide(color: radiantGold.withValues(alpha: 0.4)),
@@ -285,6 +292,9 @@ class _AlAtheerAppState extends State<AlAtheerApp> {
           secondary: radiantGold,
           surface: const Color(0xFF0F172A),
           surfaceContainerHighest: const Color(0xFF1E293B),
+          onSurface: const Color(0xFFF8FAFC),
+          onSurfaceVariant: const Color(0xFFCBD5E1),
+          onPrimary: Colors.white,
         ),
         scaffoldBackgroundColor: const Color(0xFF060D1A),
         appBarTheme: const AppBarTheme(
@@ -309,6 +319,10 @@ class _AlAtheerAppState extends State<AlAtheerApp> {
         inputDecorationTheme: InputDecorationTheme(
           filled: true,
           fillColor: const Color(0xFF1E293B),
+          labelStyle: const TextStyle(color: Color(0xFFCBD5E1)),
+          hintStyle: const TextStyle(color: Color(0xFF94A3B8)),
+          prefixIconColor: const Color(0xFFCBD5E1),
+          suffixIconColor: const Color(0xFFCBD5E1),
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(16),
             borderSide: BorderSide(color: radiantGold.withValues(alpha: 0.3)),

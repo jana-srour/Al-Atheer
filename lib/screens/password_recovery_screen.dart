@@ -84,7 +84,9 @@ class _PasswordRecoveryScreenState extends State<PasswordRecoveryScreen> {
                       Text(
                         strings.text('reset_desc'),
                         textAlign: TextAlign.center,
-                        style: TextStyle(color: Colors.grey),
+                        style: TextStyle(
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        ),
                       ),
                       const SizedBox(height: 22),
                       TextFormField(

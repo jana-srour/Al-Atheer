@@ -7,6 +7,7 @@ import '../localization/app_strings.dart';
 class IslamicHeaderWidget extends StatelessWidget {
   final VoidCallback onOpenAdmin;
   final VoidCallback onOpenSettings;
+  final VoidCallback onOpenPlaylists;
   final VoidCallback onToggleFavorites;
   final bool isFavoritesSelected;
 
@@ -14,6 +15,7 @@ class IslamicHeaderWidget extends StatelessWidget {
     super.key,
     required this.onOpenAdmin,
     required this.onOpenSettings,
+    required this.onOpenPlaylists,
     required this.onToggleFavorites,
     required this.isFavoritesSelected,
   });
@@ -74,122 +76,16 @@ class IslamicHeaderWidget extends StatelessWidget {
       return;
     }
 
-    final nameController = TextEditingController(text: auth.displayName);
     await showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
       showDragHandle: true,
-      builder: (sheetContext) => Padding(
-        padding: EdgeInsets.fromLTRB(
-          20,
-          8,
-          20,
-          MediaQuery.viewInsetsOf(sheetContext).bottom + 24,
-        ),
-        child: SafeArea(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Row(
-                children: [
-                  const CircleAvatar(
-                    backgroundColor: Color(0xFF0F172A),
-                    foregroundColor: Color(0xFFF59E0B),
-                    child: Icon(Icons.person),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          auth.isAdmin
-                              ? '${auth.displayName} · ${strings.text('admin')}'
-                              : auth.displayName,
-                          style: const TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 16,
-                          ),
-                        ),
-                        Text(
-                          auth.user?.email ?? '',
-                          style: TextStyle(
-                            color: Theme.of(
-                              context,
-                            ).colorScheme.onSurfaceVariant,
-                            fontSize: 12,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-              if (auth.profileError != null) ...[
-                const SizedBox(height: 12),
-                Text(
-                  auth.profileError!,
-                  style: TextStyle(
-                    color: Theme.of(context).colorScheme.error,
-                    fontSize: 12,
-                  ),
-                ),
-              ],
-              const SizedBox(height: 18),
-              TextField(
-                controller: nameController,
-                maxLength: 80,
-                textCapitalization: TextCapitalization.words,
-                decoration: InputDecoration(
-                  labelText: strings.text('profile_name'),
-                  prefixIcon: Icon(Icons.badge_outlined),
-                ),
-              ),
-              const SizedBox(height: 8),
-              FilledButton.icon(
-                onPressed: () async {
-                  final error = await auth.updateDisplayName(
-                    nameController.text,
-                  );
-                  if (!sheetContext.mounted) return;
-                  if (error != null) {
-                    ScaffoldMessenger.of(
-                      sheetContext,
-                    ).showSnackBar(SnackBar(content: Text(error)));
-                    return;
-                  }
-                  Navigator.pop(sheetContext);
-                  if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text(strings.text('profile_saved'))),
-                    );
-                  }
-                },
-                icon: const Icon(Icons.save_outlined),
-                label: Text(strings.text('save_name')),
-              ),
-              const SizedBox(height: 8),
-              OutlinedButton.icon(
-                onPressed: () async {
-                  Navigator.pop(sheetContext);
-                  final error = await auth.signOut();
-                  if (!context.mounted) return;
-                  if (error != null) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text(error)),
-                    );
-                  }
-                },
-                icon: const Icon(Icons.logout, color: Colors.redAccent),
-                label: Text(strings.text('sign_out')),
-              ),
-            ],
-          ),
-        ),
+      builder: (_) => _AccountSheet(
+        auth: auth,
+        strings: strings,
+        rootContext: context,
       ),
     );
-    nameController.dispose();
   }
 
   @override
@@ -212,10 +108,16 @@ class IslamicHeaderWidget extends StatelessWidget {
         bottom: false,
         child: Column(
           children: [
-            // Top Date and Identity row
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
+            // Keep the date and controls together at the left edge.
+            Align(
+              alignment: Alignment.centerLeft,
+              child: Directionality(
+                textDirection: TextDirection.ltr,
+                child: Wrap(
+                  alignment: WrapAlignment.start,
+                  spacing: 8,
+                  runSpacing: 4,
+                  children: [
                 // Hijri Date Badge
                 Container(
                   padding: const EdgeInsets.symmetric(
@@ -306,6 +208,16 @@ class IslamicHeaderWidget extends StatelessWidget {
                     ),
                     const SizedBox(width: 8),
 
+                    IconButton(
+                      icon: const Icon(
+                        Icons.queue_music_rounded,
+                        color: Colors.white,
+                        size: 20,
+                      ),
+                      tooltip: 'قوائم التشغيل والدورات',
+                      onPressed: onOpenPlaylists,
+                    ),
+
                     // Admin Studio Shortcut
                     if (auth.isAuthenticated && auth.isAdmin)
                       IconButton(
@@ -340,10 +252,12 @@ class IslamicHeaderWidget extends StatelessWidget {
                       tooltip: 'Settings',
                       onPressed: onOpenSettings,
                     ),
-                  ],
-                ),
-              ],
+                    ],
+                  ),
+                ],
+              ),
             ),
+          ),
             const SizedBox(height: 8),
             Align(
               alignment: AlignmentDirectional.centerEnd,
@@ -459,6 +373,158 @@ class IslamicHeaderWidget extends StatelessWidget {
               ],
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class _AccountSheet extends StatefulWidget {
+  final AuthProvider auth;
+  final AppStrings strings;
+  final BuildContext rootContext;
+
+  const _AccountSheet({
+    required this.auth,
+    required this.strings,
+    required this.rootContext,
+  });
+
+  @override
+  State<_AccountSheet> createState() => _AccountSheetState();
+}
+
+class _AccountSheetState extends State<_AccountSheet> {
+  late final TextEditingController _nameController;
+
+  @override
+  void initState() {
+    super.initState();
+    _nameController = TextEditingController(text: widget.auth.displayName);
+  }
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final strings = widget.strings;
+    return Consumer<AuthProvider>(
+      builder: (context, auth, _) => Padding(
+        padding: EdgeInsets.fromLTRB(
+          20,
+          8,
+          20,
+          MediaQuery.viewInsetsOf(context).bottom + 24,
+        ),
+        child: SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Row(
+                children: [
+                  const CircleAvatar(
+                    backgroundColor: Color(0xFF0F172A),
+                    foregroundColor: Color(0xFFF59E0B),
+                    child: Icon(Icons.person),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          auth.isAdmin
+                              ? '${auth.displayName} · ${strings.text('admin')}'
+                              : auth.displayName,
+                          style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                          ),
+                        ),
+                        Text(
+                          auth.user?.email ?? '',
+                          style: TextStyle(
+                            color: Theme.of(context).colorScheme.onSurfaceVariant,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              if (auth.profileError != null) ...[
+                const SizedBox(height: 12),
+                Text(
+                  auth.profileError!,
+                  style: TextStyle(
+                    color: Theme.of(context).colorScheme.error,
+                    fontSize: 12,
+                  ),
+                ),
+              ],
+              const SizedBox(height: 18),
+              TextField(
+                controller: _nameController,
+                maxLength: 80,
+                textCapitalization: TextCapitalization.words,
+                decoration: InputDecoration(
+                  labelText: strings.text('profile_name'),
+                  prefixIcon: const Icon(Icons.badge_outlined),
+                ),
+              ),
+              const SizedBox(height: 8),
+              FilledButton.icon(
+                onPressed: auth.isLoading
+                    ? null
+                    : () async {
+                        final error = await auth.updateDisplayName(
+                          _nameController.text,
+                        );
+                        if (!context.mounted) return;
+                        if (error != null) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text(error)),
+                          );
+                          return;
+                        }
+                        Navigator.pop(context);
+                        if (widget.rootContext.mounted) {
+                          ScaffoldMessenger.of(
+                            widget.rootContext,
+                          ).showSnackBar(
+                            SnackBar(
+                              content: Text(strings.text('profile_saved')),
+                            ),
+                          );
+                        }
+                      },
+                icon: const Icon(Icons.save_outlined),
+                label: Text(strings.text('save_name')),
+              ),
+              const SizedBox(height: 8),
+              OutlinedButton.icon(
+                onPressed: auth.isLoading
+                    ? null
+                    : () async {
+                        Navigator.pop(context);
+                        final error = await auth.signOut();
+                        if (error != null && widget.rootContext.mounted) {
+                          ScaffoldMessenger.of(
+                            widget.rootContext,
+                          ).showSnackBar(SnackBar(content: Text(error)));
+                        }
+                      },
+                icon: const Icon(Icons.logout, color: Colors.redAccent),
+                label: Text(strings.text('sign_out')),
+              ),
+            ],
+          ),
         ),
       ),
     );

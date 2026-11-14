@@ -5,11 +5,11 @@ import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart';
-import 'package:url_launcher/url_launcher.dart';
 import '../models/resource_model.dart';
 import '../providers/resource_provider.dart';
 import '../providers/settings_provider.dart';
-import '../screens/player/pdf_reader_screen.dart';
+import '../screens/pdf_reader_screen.dart';
+import '../screens/player/pdf_reader_screen.dart' as native_pdf;
 import 'archive_ingestion_modal.dart';
 
 class PdfViewerWidget extends StatelessWidget {
@@ -63,14 +63,13 @@ class PdfViewerWidget extends StatelessWidget {
     }
 
     if (kIsWeb) {
-      // For web, open in new tab
-      final uri = Uri.parse(archiveUrl);
-      final opened = await launchUrl(uri, mode: LaunchMode.externalApplication);
-      if (!opened && context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('تعذر فتح ملف PDF في المتصفح.')),
-        );
-      }
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) =>
+              PdfReaderScreen(url: archiveUrl, title: resource.title),
+        ),
+      );
       return;
     }
 
@@ -110,8 +109,10 @@ class PdfViewerWidget extends StatelessWidget {
       Navigator.push(
         context,
         MaterialPageRoute(
-          builder: (_) =>
-              PdfReaderScreen(pdfFile: downloadedFile, title: resource.title),
+          builder: (_) => native_pdf.PdfReaderScreen(
+            pdfFile: downloadedFile,
+            title: resource.title,
+          ),
         ),
       );
     } else if (context.mounted) {

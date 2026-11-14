@@ -4,7 +4,7 @@ import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart';
 import '../models/resource_model.dart';
 import '../providers/settings_provider.dart';
-import 'resource_detail_sheet.dart';
+import '../screens/text_reader_screen.dart';
 
 class TextQuoteWidget extends StatefulWidget {
   final ResourceModel resource;
@@ -46,7 +46,12 @@ class _TextQuoteWidgetState extends State<TextQuoteWidget> {
         ),
       ),
       child: InkWell(
-        onTap: () => ResourceDetailSheet.show(context, widget.resource),
+        onTap: () => Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => TextReaderScreen(resource: widget.resource),
+          ),
+        ),
         borderRadius: BorderRadius.circular(20),
         child: Container(
           decoration: BoxDecoration(
@@ -223,7 +228,13 @@ class _TextQuoteWidgetState extends State<TextQuoteWidget> {
                       'عرض الفائدة كاملة',
                       style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
                     ),
-                    onPressed: () => ResourceDetailSheet.show(context, widget.resource),
+                    onPressed: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) =>
+                            TextReaderScreen(resource: widget.resource),
+                      ),
+                    ),
                   ),
                 ],
               ),

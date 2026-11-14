@@ -217,9 +217,9 @@ class _LoginScreenState extends State<LoginScreen> {
                             ? strings.text('sign_up_desc')
                             : strings.text('sign_in_desc'),
                         textAlign: TextAlign.center,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 12,
-                          color: Colors.grey,
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
                         ),
                       ),
                       const SizedBox(height: 24),
