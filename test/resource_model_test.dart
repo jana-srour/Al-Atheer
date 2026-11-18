@@ -3,6 +3,17 @@ import 'package:al_atheer/models/resource_model.dart';
 import 'package:al_atheer/services/archive_upload_service.dart';
 
 void main() {
+  test('resources without a category do not get a seeded category', () {
+    final resource = ResourceModel.fromJson({
+      'id': 11,
+      'title': 'Uncategorized',
+      'type': 'text',
+      'created_at': '2025-01-01T00:00:00Z',
+    });
+
+    expect(resource.category, isEmpty);
+  });
+
   test('legacy resources load without attachment metadata', () {
     final resource = ResourceModel.fromJson({
       'id': 7,

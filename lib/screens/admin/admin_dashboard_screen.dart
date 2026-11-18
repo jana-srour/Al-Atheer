@@ -28,7 +28,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
   Timer? _tickerTimer;
 
   List<ResourceModel> _resources = [];
-  List<String> _categories = ['Fiqh', 'Aqeedah', 'Tafseer', 'General'];
+  List<String> _categories = [];
   bool _isLoading = true;
   bool _hasArchiveKeys = false;
   String _searchFilter = '';
@@ -70,25 +70,25 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
   }
 
   Future<void> _fetchData() async {
+    final resourceProvider = Provider.of<ResourceProvider>(
+      context,
+      listen: false,
+    );
     setState(() => _isLoading = true);
     try {
       final resResponse = await _supabase
           .from('resources')
           .select()
+          .order('sort_order')
           .order('created_at', ascending: false);
 
       final loadedResources = (resResponse as List)
           .map((map) => ResourceModel.fromMap(map))
           .toList();
 
-      try {
-        final catResponse = await _supabase.from('categories').select('name');
-        if (catResponse.isNotEmpty) {
-          _categories = (catResponse as List)
-              .map((c) => c['name'].toString())
-              .toList();
-        }
-      } catch (_) {}
+      await resourceProvider.fetchCategories();
+      if (!mounted) return;
+      _categories = List.of(resourceProvider.categories);
 
       if (mounted) {
         setState(() {
@@ -191,15 +191,42 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
       context: context,
       builder: (_) => CategoryManagerDialog(
         categories: _categories,
+        onReorder: (index, offset) => Provider.of<ResourceProvider>(
+          context,
+          listen: false,
+        ).moveCategory(index, offset),
         onChanged: () {
           _fetchData();
-          Provider.of<ResourceProvider>(
-            context,
-            listen: false,
-          ).fetchCategories();
         },
       ),
     );
+  }
+
+  Future<void> _moveResource(int index, int offset) async {
+    final destination = index + offset;
+    if (destination < 0 || destination >= _resources.length) return;
+    final reordered = List<ResourceModel>.of(_resources);
+    final resource = reordered.removeAt(index);
+    reordered.insert(destination, resource);
+    setState(() => _resources = reordered);
+
+    try {
+      await Provider.of<ResourceProvider>(
+        context,
+        listen: false,
+      ).reorderResources(reordered.map((item) => item.id).toList());
+      if (mounted) {
+        await _fetchData();
+      }
+    } catch (error) {
+      if (mounted) {
+        await _fetchData();
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('تعذر تغيير ترتيب المادة: $error')),
+        );
+      }
+    }
   }
 
   void _showCredentialsDialog() {
@@ -728,9 +755,14 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
                         itemCount: filteredResources.length,
                         itemBuilder: (ctx, index) {
                           final item = filteredResources[index];
+                          final canReorder =
+                              _searchFilter.trim().isEmpty &&
+                              _typeFilter == 'all';
                           return _buildResourceCard(
                             item,
                             isDark,
+                            index: index,
+                            canReorder: canReorder,
                             delaySeconds: delaySeconds,
                             isReady: resProv.isResourceReady(
                               item,
@@ -905,6 +937,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
   Widget _buildResourceCard(
     ResourceModel res,
     bool isDark, {
+    required int index,
+    required bool canReorder,
     required int delaySeconds,
     required bool isReady,
   }) {
@@ -1041,6 +1075,28 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
                 ],
               ],
             ),
+            if (canReorder)
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  IconButton(
+                    tooltip: 'تحريك المادة للأعلى',
+                    visualDensity: VisualDensity.compact,
+                    onPressed: index == 0
+                        ? null
+                        : () => _moveResource(index, -1),
+                    icon: const Icon(Icons.arrow_upward, size: 18),
+                  ),
+                  IconButton(
+                    tooltip: 'تحريك المادة للأسفل',
+                    visualDensity: VisualDensity.compact,
+                    onPressed: index == _resources.length - 1
+                        ? null
+                        : () => _moveResource(index, 1),
+                    icon: const Icon(Icons.arrow_downward, size: 18),
+                  ),
+                ],
+              ),
           ],
         ),
         trailing: isCompact
@@ -1179,9 +1235,7 @@ class _ResourceEditDialogState extends State<ResourceEditDialog> {
     _attachments = List.of(widget.resourceToEdit.attachments);
     _coverImageUrl = widget.resourceToEdit.coverImageUrl;
     _coverImageHidden = widget.resourceToEdit.coverImageHidden;
-    _category = widget.categories.contains(widget.resourceToEdit.category)
-        ? widget.resourceToEdit.category
-        : (widget.categories.isNotEmpty ? widget.categories.first : 'Fiqh');
+    _category = widget.resourceToEdit.category;
   }
 
   @override
@@ -1275,12 +1329,17 @@ class _ResourceEditDialogState extends State<ResourceEditDialog> {
               ),
               const SizedBox(height: 12),
               DropdownButtonFormField<String>(
-                initialValue: _category,
+                initialValue: _category.isEmpty ? null : _category,
                 decoration: const InputDecoration(labelText: 'التصنيف'),
-                items: widget.categories
-                    .map((c) => DropdownMenuItem(value: c, child: Text(c)))
-                    .toList(),
-                onChanged: (v) => setState(() => _category = v!),
+                items:
+                    {...widget.categories, if (_category.isNotEmpty) _category}
+                        .map((c) => DropdownMenuItem(value: c, child: Text(c)))
+                        .toList(),
+                validator: (value) =>
+                    value == null ? 'أضف تصنيفاً أولاً' : null,
+                onChanged: (v) {
+                  if (v != null) setState(() => _category = v);
+                },
               ),
               const SizedBox(height: 12),
               if (_type != 'text') ...[
@@ -1515,11 +1574,13 @@ class _AttachmentEditorDialogState extends State<_AttachmentEditorDialog> {
 class CategoryManagerDialog extends StatefulWidget {
   final List<String> categories;
   final VoidCallback onChanged;
+  final Future<void> Function(int index, int offset) onReorder;
 
   const CategoryManagerDialog({
     super.key,
     required this.categories,
     required this.onChanged,
+    required this.onReorder,
   });
 
   @override
@@ -1528,6 +1589,33 @@ class CategoryManagerDialog extends StatefulWidget {
 
 class _CategoryManagerDialogState extends State<CategoryManagerDialog> {
   final TextEditingController _catController = TextEditingController();
+  final Set<int> _movingCategories = {};
+  late List<String> _categories;
+
+  @override
+  void initState() {
+    super.initState();
+    _categories = List.of(widget.categories);
+  }
+
+  Future<void> _moveCategory(int index, int offset) async {
+    if (!_movingCategories.add(index)) return;
+    try {
+      await widget.onReorder(index, offset);
+      final category = _categories.removeAt(index);
+      _categories.insert(index + offset, category);
+      if (mounted) setState(() {});
+      widget.onChanged();
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('تعذر تغيير ترتيب التصنيف: $error')),
+        );
+      }
+    } finally {
+      _movingCategories.remove(index);
+    }
+  }
 
   Future<void> _addCategory() async {
     final name = _catController.text.trim();
@@ -1657,28 +1745,47 @@ class _CategoryManagerDialogState extends State<CategoryManagerDialog> {
               constraints: const BoxConstraints(maxHeight: 200),
               child: ListView.builder(
                 shrinkWrap: true,
-                itemCount: widget.categories.length,
+                itemCount: _categories.length,
                 itemBuilder: (context, index) {
-                  final cat = widget.categories[index];
+                  final cat = _categories[index];
                   return ListTile(
                     dense: true,
                     title: Text(
                       cat,
                       style: const TextStyle(fontWeight: FontWeight.w500),
                     ),
-                    trailing: IconButton(
-                      tooltip: 'تعديل اسم التصنيف',
-                      icon: const Icon(Icons.edit_outlined, size: 20),
-                      onPressed: () => _renameCategory(cat),
-                    ),
-                    leading: IconButton(
-                      tooltip: 'حذف التصنيف',
-                      icon: const Icon(
-                        Icons.delete_outline,
-                        color: Colors.redAccent,
-                        size: 20,
-                      ),
-                      onPressed: () => _deleteCategory(cat),
+                    trailing: Wrap(
+                      spacing: 0,
+                      children: [
+                        IconButton(
+                          tooltip: 'تحريك التصنيف للأعلى',
+                          icon: const Icon(Icons.arrow_upward, size: 18),
+                          onPressed: index == 0
+                              ? null
+                              : () => _moveCategory(index, -1),
+                        ),
+                        IconButton(
+                          tooltip: 'تحريك التصنيف للأسفل',
+                          icon: const Icon(Icons.arrow_downward, size: 18),
+                          onPressed: index == _categories.length - 1
+                              ? null
+                              : () => _moveCategory(index, 1),
+                        ),
+                        IconButton(
+                          tooltip: 'تعديل اسم التصنيف',
+                          icon: const Icon(Icons.edit_outlined, size: 20),
+                          onPressed: () => _renameCategory(cat),
+                        ),
+                        IconButton(
+                          tooltip: 'حذف التصنيف',
+                          icon: const Icon(
+                            Icons.delete_outline,
+                            color: Colors.redAccent,
+                            size: 20,
+                          ),
+                          onPressed: () => _deleteCategory(cat),
+                        ),
+                      ],
                     ),
                   );
                 },

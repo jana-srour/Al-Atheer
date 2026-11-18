@@ -171,7 +171,7 @@ class _AzkarEditorDialogState extends State<_AzkarEditorDialog> {
     );
     _scheduledAt =
         item?.scheduledAt ?? DateTime.now().add(const Duration(minutes: 5));
-    _category = item?.category ?? 'General';
+    _category = item?.category ?? '';
   }
 
   @override
@@ -246,13 +246,10 @@ class _AzkarEditorDialogState extends State<_AzkarEditorDialog> {
 
   @override
   Widget build(BuildContext context) {
-    final categories = context
-        .watch<ResourceProvider>()
-        .categories
-        .where((category) => category != 'All')
-        .toList();
-    if (!categories.contains(_category)) categories.add(_category);
-    if (categories.isEmpty) categories.add('General');
+    final categories = context.watch<ResourceProvider>().categories.toList();
+    if (_category.isNotEmpty && !categories.contains(_category)) {
+      categories.add(_category);
+    }
 
     return AlertDialog(
       scrollable: true,
@@ -304,7 +301,7 @@ class _AzkarEditorDialogState extends State<_AzkarEditorDialog> {
               ),
               const SizedBox(height: 10),
               DropdownButtonFormField<String>(
-                initialValue: _category,
+                initialValue: _category.isEmpty ? null : _category,
                 decoration: const InputDecoration(labelText: 'المجلد'),
                 items: categories
                     .map(
@@ -314,6 +311,8 @@ class _AzkarEditorDialogState extends State<_AzkarEditorDialog> {
                       ),
                     )
                     .toList(),
+                validator: (value) =>
+                    value == null ? 'أضف تصنيفاً أولاً' : null,
                 onChanged: (value) {
                   if (value != null) setState(() => _category = value);
                 },

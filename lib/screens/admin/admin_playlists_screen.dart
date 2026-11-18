@@ -117,6 +117,18 @@ class _AdminPlaylistsScreenState extends State<AdminPlaylistsScreen> {
     }
   }
 
+  Future<void> _movePlaylist(int index, int offset) async {
+    try {
+      await context.read<ResourceProvider>().movePlaylist(index, offset);
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('تعذر تغيير ترتيب القائمة: $error')),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<ResourceProvider>();
@@ -179,6 +191,20 @@ class _AdminPlaylistsScreenState extends State<AdminPlaylistsScreen> {
                         trailing: Wrap(
                           spacing: 0,
                           children: [
+                            IconButton(
+                              tooltip: 'تحريك القائمة للأعلى',
+                              onPressed: index == 0
+                                  ? null
+                                  : () => _movePlaylist(index, -1),
+                              icon: const Icon(Icons.arrow_upward),
+                            ),
+                            IconButton(
+                              tooltip: 'تحريك القائمة للأسفل',
+                              onPressed: index == provider.playlists.length - 1
+                                  ? null
+                                  : () => _movePlaylist(index, 1),
+                              icon: const Icon(Icons.arrow_downward),
+                            ),
                             IconButton(
                               tooltip: 'تعديل المواد',
                               onPressed: () =>
@@ -253,7 +279,7 @@ class _PlaylistEditorDialog extends StatefulWidget {
 class _PlaylistEditorDialogState extends State<_PlaylistEditorDialog> {
   late final TextEditingController _titleController;
   late final TextEditingController _descriptionController;
-  late final Set<int> _selectedResourceIds;
+  late final List<int> _selectedResourceIds;
   String? _coverImageUrl;
   String _searchQuery = '';
   String? _saveError;
@@ -270,8 +296,8 @@ class _PlaylistEditorDialogState extends State<_PlaylistEditorDialog> {
     );
     _coverImageUrl = widget.playlist?.coverImageUrl;
     _selectedResourceIds =
-        widget.playlist?.resources.map((resource) => resource.id).toSet() ??
-        <int>{};
+        widget.playlist?.resources.map((resource) => resource.id).toList() ??
+        <int>[];
   }
 
   @override
@@ -297,7 +323,7 @@ class _PlaylistEditorDialogState extends State<_PlaylistEditorDialog> {
         id: widget.playlist?.id,
         title: title,
         description: _descriptionController.text.trim(),
-        resourceIds: _selectedResourceIds.toList(),
+        resourceIds: _selectedResourceIds,
         coverImageUrl: _coverImageUrl,
       );
       if (mounted) Navigator.pop(context, true);
@@ -364,6 +390,63 @@ class _PlaylistEditorDialogState extends State<_PlaylistEditorDialog> {
                 style: Theme.of(context).textTheme.labelMedium,
               ),
             ),
+            if (_selectedResourceIds.isNotEmpty)
+              SizedBox(
+                height: (_selectedResourceIds.length * 52.0)
+                    .clamp(0.0, 130.0)
+                    .toDouble(),
+                child: ListView.builder(
+                  itemCount: _selectedResourceIds.length,
+                  itemBuilder: (context, index) {
+                    final id = _selectedResourceIds[index];
+                    final resource = widget.resources.firstWhere(
+                      (item) => item.id == id,
+                    );
+                    return ListTile(
+                      dense: true,
+                      title: Text(
+                        resource.title,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      trailing: Wrap(
+                        children: [
+                          IconButton(
+                            tooltip: 'تحريك المادة للأعلى',
+                            visualDensity: VisualDensity.compact,
+                            onPressed: index == 0
+                                ? null
+                                : () => setState(() {
+                                    final selected = _selectedResourceIds
+                                        .removeAt(index);
+                                    _selectedResourceIds.insert(
+                                      index - 1,
+                                      selected,
+                                    );
+                                  }),
+                            icon: const Icon(Icons.arrow_upward, size: 18),
+                          ),
+                          IconButton(
+                            tooltip: 'تحريك المادة للأسفل',
+                            visualDensity: VisualDensity.compact,
+                            onPressed: index == _selectedResourceIds.length - 1
+                                ? null
+                                : () => setState(() {
+                                    final selected = _selectedResourceIds
+                                        .removeAt(index);
+                                    _selectedResourceIds.insert(
+                                      index + 1,
+                                      selected,
+                                    );
+                                  }),
+                            icon: const Icon(Icons.arrow_downward, size: 18),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                ),
+              ),
             const SizedBox(height: 4),
             Expanded(
               child: visibleResources.isEmpty

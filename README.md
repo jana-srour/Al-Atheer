@@ -79,6 +79,12 @@ library are not used as daily quotes.
 
 ## Categories, Azkar, and scheduled reminders
 
+Run
+[`supabase/migrations/20261118200000_add_content_sort_order.sql`](./supabase/migrations/20261118200000_add_content_sort_order.sql)
+in the Supabase SQL Editor before using content ordering. It adds persistent
+ordering to categories, playlists, and library resources while preserving the
+existing order of playlist items.
+
 The admin category manager supports renaming a category and updates the
 category value on all library resources and Azkar in the same database
 transaction. Existing posts remain editable and deletable from the resource

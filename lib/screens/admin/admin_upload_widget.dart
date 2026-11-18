@@ -29,7 +29,7 @@ class _AdminUploadWidgetState extends State<AdminUploadWidget> {
   String? _coverImageUrl;
   bool _coverImageHidden = false;
   String _resourceType = 'pdf';
-  String _selectedCategory = 'Fiqh';
+  String _selectedCategory = '';
 
   bool _isUploading = false;
   double _uploadProgress = 0.0;
@@ -334,7 +334,7 @@ class _AdminUploadWidgetState extends State<AdminUploadWidget> {
           controller: catController,
           decoration: const InputDecoration(
             labelText: 'Category Name',
-            hintText: 'e.g. Hadith, Seerah, Fiqh',
+            hintText: 'e.g. Hadith, Seerah',
           ),
         ),
         actions: [
@@ -346,10 +346,12 @@ class _AdminUploadWidgetState extends State<AdminUploadWidget> {
             onPressed: () async {
               final newCat = catController.text.trim();
               if (newCat.isNotEmpty) {
+                var added = false;
                 try {
                   await Supabase.instance.client.from('categories').insert({
                     'name': newCat,
                   });
+                  added = true;
                   if (mounted) {
                     await Provider.of<ResourceProvider>(
                       context,
@@ -357,8 +359,14 @@ class _AdminUploadWidgetState extends State<AdminUploadWidget> {
                     ).fetchCategories();
                     setState(() => _selectedCategory = newCat);
                   }
-                } catch (_) {}
-                if (ctx.mounted) Navigator.pop(ctx);
+                } catch (error) {
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('تعذر إضافة التصنيف: $error')),
+                    );
+                  }
+                }
+                if (added && ctx.mounted) Navigator.pop(ctx);
               }
             },
             child: const Text('Add'),
@@ -578,9 +586,7 @@ class _AdminUploadWidgetState extends State<AdminUploadWidget> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final settings = Provider.of<SettingsProvider>(context);
 
-    final categories = Provider.of<ResourceProvider>(
-      context,
-    ).categories.where((c) => c != 'All').toList();
+    final categories = Provider.of<ResourceProvider>(context).categories;
 
     if (categories.isNotEmpty && !categories.contains(_selectedCategory)) {
       _selectedCategory = categories.first;
@@ -1102,9 +1108,7 @@ class _AdminUploadWidgetState extends State<AdminUploadWidget> {
                         child: DropdownButtonFormField<String>(
                           initialValue: categories.contains(_selectedCategory)
                               ? _selectedCategory
-                              : (categories.isNotEmpty
-                                    ? categories.first
-                                    : 'Fiqh'),
+                              : null,
                           decoration: InputDecoration(
                             labelText: 'التصنيف *',
                             prefixIcon: const Icon(
@@ -1121,6 +1125,8 @@ class _AdminUploadWidgetState extends State<AdminUploadWidget> {
                                     DropdownMenuItem(value: c, child: Text(c)),
                               )
                               .toList(),
+                          validator: (value) =>
+                              value == null ? 'أضف تصنيفاً أولاً' : null,
                           onChanged: (val) {
                             if (val != null) {
                               setState(() => _selectedCategory = val);

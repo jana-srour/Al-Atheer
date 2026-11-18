@@ -26,7 +26,7 @@ class AzkarModel {
     description: json['description']?.toString(),
     source: json['source']?.toString(),
     repetitionCount: (json['repetition_count'] as num?)?.toInt() ?? 1,
-    category: json['category']?.toString() ?? 'General',
+    category: json['category']?.toString() ?? '',
     scheduledAt: DateTime.parse(json['scheduled_at'].toString()).toLocal(),
   );
 

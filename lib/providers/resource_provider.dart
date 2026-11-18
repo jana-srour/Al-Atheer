@@ -21,7 +21,7 @@ class ResourceProvider extends ChangeNotifier {
   bool _isLoadingDailyQuoteSelection = false;
   bool _isLoadingDailyQuoteSchedule = false;
   bool _isLoading = false;
-  String _selectedCategory = 'All';
+  String? _selectedCategory;
   String _selectedType =
       'all'; // 'all', 'audio', 'video', 'pdf', 'text', 'favorites'
   String _searchQuery = '';
@@ -51,11 +51,11 @@ class ResourceProvider extends ChangeNotifier {
   String? get playlistsError => _playlistsError;
   bool get isLoadingPlaylists => _isLoadingPlaylists;
   bool get isLoading => _isLoading;
-  String get selectedCategory => _selectedCategory;
+  String? get selectedCategory => _selectedCategory;
   String get selectedType => _selectedType;
   String get searchQuery => _searchQuery;
 
-  List<String> _categories = ['All'];
+  List<String> _categories = [];
   List<String> get categories => _categories;
 
   ResourceProvider() {
@@ -123,20 +123,90 @@ class ResourceProvider extends ChangeNotifier {
 
   Future<void> fetchCategories() async {
     try {
-      final response = await _supabase.from('categories').select('name');
+      final response = await _supabase
+          .from('categories')
+          .select('name')
+          .order('sort_order')
+          .order('name');
       final List<dynamic> dataList = response as List<dynamic>;
-      _categories = [
-        'All',
-        ...dataList
-            .map((c) => c['name']?.toString() ?? '')
-            .where((name) => name.isNotEmpty),
-      ];
+      _categories = dataList
+          .map((c) => c['name']?.toString() ?? '')
+          .where((name) => name.isNotEmpty)
+          .toList();
       notifyListeners();
     } catch (e) {
       debugPrint('Error fetching categories: $e');
-      if (_categories.isEmpty) {
-        _categories = ['All', 'Fiqh', 'Aqeedah', 'Tafseer', 'General'];
+      _categories = [];
+      notifyListeners();
+    }
+  }
+
+  Future<void> moveCategory(int index, int offset) async {
+    final categories = List<String>.of(_categories);
+    final destination = index + offset;
+    if (index < 0 ||
+        index >= categories.length ||
+        destination < 0 ||
+        destination >= categories.length) {
+      return;
+    }
+
+    final category = categories.removeAt(index);
+    categories.insert(destination, category);
+    try {
+      for (var order = 0; order < categories.length; order++) {
+        await _supabase
+            .from('categories')
+            .update({'sort_order': order})
+            .eq('name', categories[order]);
       }
+      _categories = categories;
+      notifyListeners();
+    } catch (error) {
+      await fetchCategories();
+      rethrow;
+    }
+  }
+
+  Future<void> movePlaylist(int index, int offset) async {
+    final destination = index + offset;
+    if (index < 0 ||
+        index >= _playlists.length ||
+        destination < 0 ||
+        destination >= _playlists.length) {
+      return;
+    }
+
+    final playlists = List<PlaylistModel>.of(_playlists);
+    final playlist = playlists.removeAt(index);
+    playlists.insert(destination, playlist);
+    try {
+      for (var order = 0; order < playlists.length; order++) {
+        await _supabase
+            .from('playlists')
+            .update({'sort_order': order})
+            .eq('id', playlists[order].id);
+      }
+      _playlists = playlists;
+      notifyListeners();
+    } catch (error) {
+      await fetchPlaylists();
+      rethrow;
+    }
+  }
+
+  Future<void> reorderResources(List<int> resourceIds) async {
+    try {
+      for (var order = 0; order < resourceIds.length; order++) {
+        await _supabase
+            .from('resources')
+            .update({'sort_order': order})
+            .eq('id', resourceIds[order]);
+      }
+      await fetchResources();
+    } catch (error) {
+      await fetchResources();
+      rethrow;
     }
   }
 
@@ -148,7 +218,7 @@ class ResourceProvider extends ChangeNotifier {
     }
   }
 
-  void setCategoryFilter(String category) {
+  void setCategoryFilter(String? category) {
     _selectedCategory = category;
     fetchResources();
   }
@@ -159,7 +229,7 @@ class ResourceProvider extends ChangeNotifier {
   }
 
   void resetResourceFilters() {
-    _selectedCategory = 'All';
+    _selectedCategory = null;
     _selectedType = 'all';
     _searchQuery = '';
     fetchResources();
@@ -176,15 +246,18 @@ class ResourceProvider extends ChangeNotifier {
         queryBuilder = queryBuilder.eq('type', _selectedType);
       }
 
-      if (_selectedCategory != 'All') {
-        queryBuilder = queryBuilder.eq('category', _selectedCategory);
+      final selectedCategory = _selectedCategory;
+      if (selectedCategory != null) {
+        queryBuilder = queryBuilder.eq('category', selectedCategory);
       }
 
       if (_searchQuery.trim().isNotEmpty) {
         queryBuilder = queryBuilder.ilike('title', '%${_searchQuery.trim()}%');
       }
 
-      final data = await queryBuilder.order('created_at', ascending: false);
+      final data = await queryBuilder
+          .order('sort_order')
+          .order('created_at', ascending: false);
 
       _resources = (data as List)
           .map((e) => ResourceModel.fromJson(e))
@@ -225,8 +298,11 @@ class ResourceProvider extends ChangeNotifier {
     try {
       final playlistRows = await _supabase
           .from('playlists')
-          .select('id, title, description, cover_image_url, created_at')
-          .order('created_at', ascending: false);
+          .select(
+            'id, title, description, cover_image_url, created_at, sort_order',
+          )
+          .order('sort_order')
+          .order('created_at');
       final rows = playlistRows as List;
 
       if (rows.isEmpty) {
@@ -275,6 +351,23 @@ class ResourceProvider extends ChangeNotifier {
     required List<int> resourceIds,
     String? coverImageUrl,
   }) async {
+    Set<int> existingIds = {};
+    var nextSortOrder = 0;
+    if (id == null) {
+      final currentRows = await _supabase
+          .from('playlists')
+          .select('id, sort_order');
+      existingIds = (currentRows as List)
+          .map((row) => (row['id'] as num).toInt())
+          .toSet();
+      nextSortOrder =
+          (currentRows as List).fold<int>(-1, (maximum, row) {
+            final order = (row['sort_order'] as num).toInt();
+            return order > maximum ? order : maximum;
+          }) +
+          1;
+    }
+
     await _supabase.rpc(
       'save_playlist_with_resources_and_cover',
       params: {
@@ -285,6 +378,22 @@ class ResourceProvider extends ChangeNotifier {
         'p_cover_image_url': coverImageUrl,
       },
     );
+    if (id == null) {
+      final rows = await _supabase
+          .from('playlists')
+          .select('id')
+          .order('created_at', ascending: false);
+      final newRows = (rows as List)
+          .where((row) => !existingIds.contains((row['id'] as num).toInt()))
+          .toList();
+      if (newRows.isNotEmpty) {
+        final newId = (newRows.first['id'] as num).toInt();
+        await _supabase
+            .from('playlists')
+            .update({'sort_order': nextSortOrder})
+            .eq('id', newId);
+      }
+    }
     await fetchPlaylists();
   }
 

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../localization/app_strings.dart';
 import '../models/resource_model.dart';
 import '../providers/resource_provider.dart';
 import '../providers/azkar_provider.dart';
@@ -136,7 +137,7 @@ class _HomeScreenState extends State<HomeScreen>
         : azkarProv.azkar
               .where(
                 (item) =>
-                    resourceProv.selectedCategory == 'All' ||
+                    resourceProv.selectedCategory == null ||
                     item.category == resourceProv.selectedCategory,
               )
               .where(
@@ -301,39 +302,77 @@ class _HomeScreenState extends State<HomeScreen>
                     SingleChildScrollView(
                       scrollDirection: Axis.horizontal,
                       child: Row(
-                        children: resourceProv.categories.map((cat) {
-                          final isSelected =
-                              resourceProv.selectedCategory == cat;
-                          return Padding(
-                            padding: const EdgeInsets.only(left: 8.0),
-                            child: ChoiceChip(
-                              label: Text(cat),
-                              selected: isSelected,
-                              onSelected: (_) =>
-                                  resourceProv.setCategoryFilter(cat),
-                              selectedColor: deepNavy,
-                              labelStyle: TextStyle(
-                                fontSize: 12,
-                                fontWeight: isSelected
-                                    ? FontWeight.bold
-                                    : FontWeight.normal,
-                                color: isSelected
-                                    ? radiantGold
-                                    : (isDark
-                                          ? Colors.grey.shade300
-                                          : Colors.black87),
-                              ),
-                              side: BorderSide(
-                                color: isSelected
-                                    ? radiantGold
-                                    : (isDark
-                                          ? Colors.grey.shade800
-                                          : Colors.grey.shade300),
-                                width: isSelected ? 1.4 : 1,
+                        children:
+                            resourceProv.categories.map((cat) {
+                              final isSelected =
+                                  resourceProv.selectedCategory == cat;
+                              return Padding(
+                                padding: const EdgeInsets.only(left: 8.0),
+                                child: ChoiceChip(
+                                  label: Text(cat),
+                                  selected: isSelected,
+                                  onSelected: (_) =>
+                                      resourceProv.setCategoryFilter(cat),
+                                  selectedColor: deepNavy,
+                                  labelStyle: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: isSelected
+                                        ? FontWeight.bold
+                                        : FontWeight.normal,
+                                    color: isSelected
+                                        ? radiantGold
+                                        : (isDark
+                                              ? Colors.grey.shade300
+                                              : Colors.black87),
+                                  ),
+                                  side: BorderSide(
+                                    color: isSelected
+                                        ? radiantGold
+                                        : (isDark
+                                              ? Colors.grey.shade800
+                                              : Colors.grey.shade300),
+                                    width: isSelected ? 1.4 : 1,
+                                  ),
+                                ),
+                              );
+                            }).toList()..insert(
+                              0,
+                              Padding(
+                                padding: const EdgeInsets.only(left: 8.0),
+                                child: ChoiceChip(
+                                  label: Text(
+                                    AppStrings.of(context).text('home_all'),
+                                  ),
+                                  selected:
+                                      resourceProv.selectedCategory == null,
+                                  onSelected: (_) =>
+                                      resourceProv.setCategoryFilter(null),
+                                  selectedColor: deepNavy,
+                                  labelStyle: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight:
+                                        resourceProv.selectedCategory == null
+                                        ? FontWeight.bold
+                                        : FontWeight.normal,
+                                    color: resourceProv.selectedCategory == null
+                                        ? radiantGold
+                                        : (isDark
+                                              ? Colors.grey.shade300
+                                              : Colors.black87),
+                                  ),
+                                  side: BorderSide(
+                                    color: resourceProv.selectedCategory == null
+                                        ? radiantGold
+                                        : (isDark
+                                              ? Colors.grey.shade800
+                                              : Colors.grey.shade300),
+                                    width: resourceProv.selectedCategory == null
+                                        ? 1.4
+                                        : 1,
+                                  ),
+                                ),
                               ),
                             ),
-                          );
-                        }).toList(),
                       ),
                     ),
                   ],
@@ -348,7 +387,7 @@ class _HomeScreenState extends State<HomeScreen>
             if (featuredItem != null &&
                 resourceProv.searchQuery.isEmpty &&
                 !_isFavoritesOnly &&
-                resourceProv.selectedCategory == 'All' &&
+                resourceProv.selectedCategory == null &&
                 resourceProv.selectedType == 'all')
               SliverToBoxAdapter(
                 child: Center(
@@ -468,7 +507,7 @@ class _HomeScreenState extends State<HomeScreen>
                               _searchController.clear();
                               setState(() => _isFavoritesOnly = false);
                               resourceProv.setSearchQuery('');
-                              resourceProv.setCategoryFilter('All');
+                              resourceProv.setCategoryFilter(null);
                               _tabController.animateTo(0);
                             },
                           ),

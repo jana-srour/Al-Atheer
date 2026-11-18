@@ -2,6 +2,17 @@ import 'package:al_atheer/models/azkar_model.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  test('Azkar without a category do not get a seeded category', () {
+    final item = AzkarModel.fromJson({
+      'id': 41,
+      'title': 'Reminder',
+      'content': 'Remember',
+      'scheduled_at': '2026-11-18T08:30:00Z',
+    });
+
+    expect(item.category, isEmpty);
+  });
+
   test('Azkar schedule round-trips its time and reminder details', () {
     final item = AzkarModel.fromJson({
       'id': 42,

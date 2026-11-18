@@ -84,7 +84,7 @@ class ResourceModel {
       attachments: attachments,
       coverImageUrl: json['cover_image_url']?.toString(),
       coverImageHidden: json['cover_image_hidden'] == true,
-      category: json['category'] ?? 'General',
+      category: json['category']?.toString() ?? '',
       createdAt: parsedDate,
     );
   }
