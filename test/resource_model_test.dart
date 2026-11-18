@@ -41,6 +41,7 @@ void main() {
 
     expect(resource.textContent, 'Post text');
     expect(resource.attachments.map((item) => item.type), ['image', 'audio']);
+    expect(resource.coverUrl, 'https://archive.org/download/item/photo.jpg');
     expect(resource.toJson()['attachments'], [
       {
         'type': 'image',
@@ -53,6 +54,42 @@ void main() {
         'file_name': 'audio.mp3',
       },
     ]);
+  });
+
+  test('post cover override and removal are honored', () {
+    final resource = ResourceModel.fromJson({
+      'id': 9,
+      'title': 'Post with custom cover',
+      'type': 'post',
+      'cover_image_url': 'https://archive.org/download/item/cover.jpg',
+      'attachments': [
+        {
+          'type': 'image',
+          'url': 'https://archive.org/download/item/photo.jpg',
+          'file_name': 'photo.jpg',
+        },
+      ],
+      'category': 'Fiqh',
+      'created_at': '2025-01-01T00:00:00Z',
+    });
+    final hiddenResource = ResourceModel.fromJson({
+      'id': 10,
+      'title': 'Post with no cover',
+      'type': 'post',
+      'cover_image_hidden': true,
+      'attachments': [
+        {
+          'type': 'image',
+          'url': 'https://archive.org/download/item/photo.jpg',
+          'file_name': 'photo.jpg',
+        },
+      ],
+      'category': 'Fiqh',
+      'created_at': '2025-01-01T00:00:00Z',
+    });
+
+    expect(resource.coverUrl, 'https://archive.org/download/item/cover.jpg');
+    expect(hiddenResource.coverUrl, isNull);
   });
 
   test('photo extensions use Archive.org image metadata', () {

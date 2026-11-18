@@ -4,6 +4,7 @@ import '../models/resource_model.dart';
 import '../providers/resource_provider.dart';
 import '../providers/settings_provider.dart';
 import 'archive_ingestion_modal.dart';
+import 'editorial_photo.dart';
 import 'resource_detail_sheet.dart';
 
 class ImageResourceWidget extends StatelessWidget {
@@ -34,7 +35,8 @@ class ImageResourceWidget extends StatelessWidget {
                 onTap: () =>
                     ArchiveIngestionModal.show(context, resource: resource),
                 child: const SizedBox(
-                  height: 180,
+                  width: double.infinity,
+                  height: 220,
                   child: Center(
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
@@ -48,23 +50,7 @@ class ImageResourceWidget extends StatelessWidget {
                 ),
               )
             else if (imageUrl != null && imageUrl.isNotEmpty)
-              Image.network(
-                imageUrl,
-                width: double.infinity,
-                height: 280,
-                fit: BoxFit.contain,
-                loadingBuilder: (context, child, progress) {
-                  if (progress == null) return child;
-                  return const SizedBox(
-                    height: 280,
-                    child: Center(child: CircularProgressIndicator()),
-                  );
-                },
-                errorBuilder: (_, _, _) => const SizedBox(
-                  height: 180,
-                  child: Center(child: Icon(Icons.broken_image_outlined)),
-                ),
-              )
+              EditorialPhoto(imageUrl: imageUrl, badgeText: 'صورة')
             else
               const SizedBox(
                 height: 180,

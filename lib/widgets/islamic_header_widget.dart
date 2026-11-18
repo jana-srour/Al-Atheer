@@ -8,6 +8,7 @@ class IslamicHeaderWidget extends StatelessWidget {
   final VoidCallback onOpenAdmin;
   final VoidCallback onOpenSettings;
   final VoidCallback onOpenPlaylists;
+  final VoidCallback onOpenBiography;
   final VoidCallback onToggleFavorites;
   final bool isFavoritesSelected;
 
@@ -16,6 +17,7 @@ class IslamicHeaderWidget extends StatelessWidget {
     required this.onOpenAdmin,
     required this.onOpenSettings,
     required this.onOpenPlaylists,
+    required this.onOpenBiography,
     required this.onToggleFavorites,
     required this.isFavoritesSelected,
   });
@@ -216,6 +218,16 @@ class IslamicHeaderWidget extends StatelessWidget {
                       ),
                       tooltip: 'قوائم التشغيل والدورات',
                       onPressed: onOpenPlaylists,
+                    ),
+
+                    IconButton(
+                      icon: const Icon(
+                        Icons.person_search_rounded,
+                        color: Colors.white,
+                        size: 20,
+                      ),
+                      tooltip: 'عن الكاتب',
+                      onPressed: onOpenBiography,
                     ),
 
                     // Admin Studio Shortcut

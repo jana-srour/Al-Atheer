@@ -7,6 +7,8 @@ import '../../models/resource_model.dart';
 import '../../providers/resource_provider.dart';
 import '../../providers/settings_provider.dart';
 import '../../services/archive_upload_service.dart';
+import '../../widgets/archive_cover_editor.dart';
+import '../../widgets/cover_image.dart';
 import 'admin_upload_widget.dart';
 import 'admin_playlists_screen.dart';
 import 'admin_quotes_screen.dart';
@@ -363,51 +365,112 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
     final imageCount = _resources.where((r) => r.type == 'image').length;
     final quoteCount = _resources.where((r) => r.type == 'text').length;
     final postCount = _resources.where((r) => r.type == 'post').length;
+    final isCompact = MediaQuery.sizeOf(context).width < 700;
 
     return Scaffold(
       appBar: AppBar(
-        title: const Row(
+        title: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.admin_panel_settings, color: radiantGold),
-            SizedBox(width: 8),
-            Text('مركز إدارة دار الأثير', style: TextStyle(fontSize: 18)),
+            const Icon(Icons.admin_panel_settings, color: radiantGold),
+            const SizedBox(width: 8),
+            Flexible(
+              child: Text(
+                'مركز إدارة دار الأثير',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(fontSize: isCompact ? 16 : 18),
+              ),
+            ),
           ],
         ),
         actions: [
-          // S3 Status Chip
-          ActionChip(
-            avatar: Icon(
-              _hasArchiveKeys ? Icons.cloud_done : Icons.cloud_off,
-              color: _hasArchiveKeys ? radiantGold : Colors.amberAccent,
-              size: 16,
+          if (isCompact) ...[
+            IconButton(
+              icon: Icon(
+                _hasArchiveKeys ? Icons.cloud_done : Icons.cloud_off,
+                color: _hasArchiveKeys ? radiantGold : Colors.amberAccent,
+              ),
+              tooltip: _hasArchiveKeys
+                  ? 'Archive.org متصل'
+                  : 'مفاتيح S3 مطلوبة',
+              onPressed: _showCredentialsDialog,
             ),
-            label: Text(
-              _hasArchiveKeys ? 'Archive.org متصل' : 'مفاتيح S3 مطلوبة',
-              style: const TextStyle(fontSize: 11, color: Colors.white),
+            PopupMenuButton<_AdminDashboardAction>(
+              tooltip: 'المزيد من خيارات الإدارة',
+              onSelected: (action) {
+                switch (action) {
+                  case _AdminDashboardAction.playlists:
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const AdminPlaylistsScreen(),
+                      ),
+                    );
+                  case _AdminDashboardAction.writer:
+                    Navigator.pushNamed(context, '/writer');
+                  case _AdminDashboardAction.categories:
+                    _showCategoryManagerDialog();
+                }
+              },
+              itemBuilder: (context) => const [
+                PopupMenuItem(
+                  value: _AdminDashboardAction.playlists,
+                  child: Text('إدارة قوائم التشغيل'),
+                ),
+                PopupMenuItem(
+                  value: _AdminDashboardAction.writer,
+                  child: Text('تعديل صفحة الكاتب'),
+                ),
+                PopupMenuItem(
+                  value: _AdminDashboardAction.categories,
+                  child: Text('إدارة التصنيفات'),
+                ),
+              ],
             ),
-            backgroundColor: const Color(0xFF0F172A),
-            side: BorderSide(
-              color: _hasArchiveKeys ? radiantGold : Colors.amberAccent,
+          ] else ...[
+            ActionChip(
+              avatar: Icon(
+                _hasArchiveKeys ? Icons.cloud_done : Icons.cloud_off,
+                color: _hasArchiveKeys ? radiantGold : Colors.amberAccent,
+                size: 16,
+              ),
+              label: Text(
+                _hasArchiveKeys ? 'Archive.org متصل' : 'مفاتيح S3 مطلوبة',
+                style: const TextStyle(fontSize: 11, color: Colors.white),
+              ),
+              backgroundColor: const Color(0xFF0F172A),
+              side: BorderSide(
+                color: _hasArchiveKeys ? radiantGold : Colors.amberAccent,
+              ),
+              onPressed: _showCredentialsDialog,
             ),
-            onPressed: _showCredentialsDialog,
-          ),
-          const SizedBox(width: 6),
-          IconButton(
-            icon: const Icon(Icons.queue_music_rounded, color: Colors.white),
-            tooltip: 'إدارة قوائم التشغيل',
-            onPressed: () => Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const AdminPlaylistsScreen()),
+            const SizedBox(width: 6),
+            IconButton(
+              icon: const Icon(Icons.queue_music_rounded, color: Colors.white),
+              tooltip: 'إدارة قوائم التشغيل',
+              onPressed: () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const AdminPlaylistsScreen()),
+              ),
             ),
-          ),
-          IconButton(
-            icon: const Icon(Icons.category_outlined, color: Colors.white),
-            tooltip: 'إدارة التصنيفات',
-            onPressed: _showCategoryManagerDialog,
-          ),
+            IconButton(
+              icon: const Icon(
+                Icons.person_outline_rounded,
+                color: Colors.white,
+              ),
+              tooltip: 'تعديل صفحة الكاتب',
+              onPressed: () => Navigator.pushNamed(context, '/writer'),
+            ),
+            IconButton(
+              icon: const Icon(Icons.category_outlined, color: Colors.white),
+              tooltip: 'إدارة التصنيفات',
+              onPressed: _showCategoryManagerDialog,
+            ),
+          ],
           IconButton(
             icon: const Icon(Icons.refresh, color: Colors.white),
+            tooltip: 'تحديث',
             onPressed: () {
               _checkArchiveKeys();
               _fetchData();
@@ -839,6 +902,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
     }
 
     final remainingStr = res.formattedRemainingTime(delaySeconds: delaySeconds);
+    final isCompact = MediaQuery.sizeOf(context).width < 560;
 
     return Card(
       margin: const EdgeInsets.symmetric(vertical: 6),
@@ -854,10 +918,17 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
       ),
       child: ListTile(
         contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-        leading: CircleAvatar(
-          backgroundColor: deepEmerald,
-          child: Icon(typeIcon, color: iconColor, size: 20),
-        ),
+        leading: res.coverUrl != null
+            ? CoverImage(
+                imageUrl: res.coverUrl,
+                width: 52,
+                height: 52,
+                fallbackIcon: typeIcon,
+              )
+            : CircleAvatar(
+                backgroundColor: deepEmerald,
+                child: Icon(typeIcon, color: iconColor, size: 20),
+              ),
         title: Text(
           res.title,
           style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
@@ -866,7 +937,10 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const SizedBox(height: 4),
-            Row(
+            Wrap(
+              spacing: 8,
+              runSpacing: 4,
+              crossAxisAlignment: WrapCrossAlignment.center,
               children: [
                 Container(
                   padding: const EdgeInsets.symmetric(
@@ -886,13 +960,11 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
                     ),
                   ),
                 ),
-                const SizedBox(width: 8),
                 Text(
                   res.type.toUpperCase(),
                   style: const TextStyle(fontSize: 11, color: Colors.grey),
                 ),
                 if (!isReady) ...[
-                  const SizedBox(width: 8),
                   Container(
                     padding: const EdgeInsets.symmetric(
                       horizontal: 6,
@@ -931,47 +1003,94 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
             ),
           ],
         ),
-        trailing: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            if (!isReady && res.archiveUrl != null)
-              IconButton(
-                icon: const Icon(Icons.refresh, size: 20, color: Colors.amber),
-                tooltip: 'فحص جاهزية الرابط',
-                onPressed: () => _testReadiness(res),
+        trailing: isCompact
+            ? PopupMenuButton<_ResourceAction>(
+                tooltip: 'خيارات المادة',
+                onSelected: (action) {
+                  switch (action) {
+                    case _ResourceAction.checkReadiness:
+                      _testReadiness(res);
+                    case _ResourceAction.openArchive:
+                      launchUrl(
+                        Uri.parse(res.archiveUrl!),
+                        mode: LaunchMode.externalApplication,
+                      );
+                    case _ResourceAction.edit:
+                      _showResourceEditDialog(res);
+                    case _ResourceAction.delete:
+                      _deleteResource(res.id);
+                  }
+                },
+                itemBuilder: (context) => [
+                  if (!isReady && res.archiveUrl != null)
+                    const PopupMenuItem(
+                      value: _ResourceAction.checkReadiness,
+                      child: Text('فحص جاهزية الرابط'),
+                    ),
+                  if (res.archiveUrl?.isNotEmpty == true)
+                    const PopupMenuItem(
+                      value: _ResourceAction.openArchive,
+                      child: Text('فتح في أرشيف الإنترنت'),
+                    ),
+                  const PopupMenuItem(
+                    value: _ResourceAction.edit,
+                    child: Text('تعديل المادة'),
+                  ),
+                  const PopupMenuItem(
+                    value: _ResourceAction.delete,
+                    child: Text('حذف المادة'),
+                  ),
+                ],
+              )
+            : Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (!isReady && res.archiveUrl != null)
+                    IconButton(
+                      icon: const Icon(
+                        Icons.refresh,
+                        size: 20,
+                        color: Colors.amber,
+                      ),
+                      tooltip: 'فحص جاهزية الرابط',
+                      onPressed: () => _testReadiness(res),
+                    ),
+                  if (res.archiveUrl != null && res.archiveUrl!.isNotEmpty)
+                    IconButton(
+                      icon: const Icon(Icons.open_in_new, size: 19),
+                      tooltip: 'فتح الرابط المباشر للأرشيف',
+                      color: radiantGold,
+                      onPressed: () => launchUrl(
+                        Uri.parse(res.archiveUrl!),
+                        mode: LaunchMode.externalApplication,
+                      ),
+                    ),
+                  IconButton(
+                    icon: const Icon(
+                      Icons.edit_outlined,
+                      color: radiantGold,
+                      size: 20,
+                    ),
+                    onPressed: () => _showResourceEditDialog(res),
+                  ),
+                  IconButton(
+                    icon: const Icon(
+                      Icons.delete_outline,
+                      color: Colors.redAccent,
+                      size: 20,
+                    ),
+                    onPressed: () => _deleteResource(res.id),
+                  ),
+                ],
               ),
-            if (res.archiveUrl != null && res.archiveUrl!.isNotEmpty)
-              IconButton(
-                icon: const Icon(Icons.open_in_new, size: 19),
-                tooltip: 'فتح الرابط المباشر للأرشيف',
-                color: radiantGold,
-                onPressed: () => launchUrl(
-                  Uri.parse(res.archiveUrl!),
-                  mode: LaunchMode.externalApplication,
-                ),
-              ),
-            IconButton(
-              icon: const Icon(
-                Icons.edit_outlined,
-                color: radiantGold,
-                size: 20,
-              ),
-              onPressed: () => _showResourceEditDialog(res),
-            ),
-            IconButton(
-              icon: const Icon(
-                Icons.delete_outline,
-                color: Colors.redAccent,
-                size: 20,
-              ),
-              onPressed: () => _deleteResource(res.id),
-            ),
-          ],
-        ),
       ),
     );
   }
 }
+
+enum _AdminDashboardAction { playlists, writer, categories }
+
+enum _ResourceAction { checkReadiness, openArchive, edit, delete }
 
 // Edit Resource Dialog
 class ResourceEditDialog extends StatefulWidget {
@@ -998,6 +1117,8 @@ class _ResourceEditDialogState extends State<ResourceEditDialog> {
   late TextEditingController _textCtrl;
   late String _type;
   late String _category;
+  String? _coverImageUrl;
+  bool _coverImageHidden = false;
   bool _isSaving = false;
 
   @override
@@ -1014,6 +1135,8 @@ class _ResourceEditDialogState extends State<ResourceEditDialog> {
       text: widget.resourceToEdit.textContent ?? '',
     );
     _type = widget.resourceToEdit.type;
+    _coverImageUrl = widget.resourceToEdit.coverImageUrl;
+    _coverImageHidden = widget.resourceToEdit.coverImageHidden;
     _category = widget.categories.contains(widget.resourceToEdit.category)
         ? widget.resourceToEdit.category
         : (widget.categories.isNotEmpty ? widget.categories.first : 'Fiqh');
@@ -1046,6 +1169,8 @@ class _ResourceEditDialogState extends State<ResourceEditDialog> {
                 : null,
             'type': _type,
             'category': _category,
+            'cover_image_url': _type == 'post' ? _coverImageUrl : null,
+            'cover_image_hidden': _type == 'post' && _coverImageHidden,
           })
           .eq('id', widget.resourceToEdit.id);
 
@@ -1128,6 +1253,21 @@ class _ResourceEditDialogState extends State<ResourceEditDialog> {
                   decoration: InputDecoration(
                     labelText: _type == 'text' ? 'نص الفائدة' : 'نص المنشور',
                   ),
+                ),
+                const SizedBox(height: 12),
+              ],
+              if (_type == 'post') ...[
+                ArchiveCoverEditor(
+                  imageUrl:
+                      _coverImageUrl ??
+                      (!_coverImageHidden
+                          ? widget.resourceToEdit.coverUrl
+                          : null),
+                  uploadTitle: _titleCtrl.text,
+                  onChanged: (url) => setState(() {
+                    _coverImageUrl = url;
+                    _coverImageHidden = url == null;
+                  }),
                 ),
                 const SizedBox(height: 12),
               ],

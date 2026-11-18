@@ -32,6 +32,8 @@ class ResourceModel {
   final String? archiveUrl;
   final String? textContent;
   final List<ResourceAttachment> attachments;
+  final String? coverImageUrl;
+  final bool coverImageHidden;
   final String category;
   final DateTime createdAt;
 
@@ -43,6 +45,8 @@ class ResourceModel {
     this.archiveUrl,
     this.textContent,
     this.attachments = const [],
+    this.coverImageUrl,
+    this.coverImageHidden = false,
     required this.category,
     required this.createdAt,
   });
@@ -78,6 +82,8 @@ class ResourceModel {
       archiveUrl: json['archive_url'],
       textContent: json['text_content'],
       attachments: attachments,
+      coverImageUrl: json['cover_image_url']?.toString(),
+      coverImageHidden: json['cover_image_hidden'] == true,
       category: json['category'] ?? 'General',
       createdAt: parsedDate,
     );
@@ -96,8 +102,20 @@ class ResourceModel {
       'attachments': attachments
           .map((attachment) => attachment.toJson())
           .toList(),
+      'cover_image_url': coverImageUrl,
+      'cover_image_hidden': coverImageHidden,
       'category': category,
     };
+  }
+
+  String? get coverUrl {
+    if (coverImageHidden) return null;
+    if (coverImageUrl?.trim().isNotEmpty == true) return coverImageUrl;
+    if (type == 'image' && archiveUrl?.isNotEmpty == true) return archiveUrl;
+    for (final attachment in attachments) {
+      if (attachment.type == 'image') return attachment.url;
+    }
+    return null;
   }
 
   /// Whether this media is still in the Archive.org backend ingestion / processing window

@@ -14,7 +14,9 @@ import '../widgets/pdf_viewer_widget.dart';
 import '../widgets/post_resource_widget.dart';
 import '../widgets/text_quote_widget.dart';
 import '../widgets/video_player_widget.dart';
+import '../widgets/writer_home_card.dart';
 import 'playlist_library_screen.dart';
+import 'writer_biography_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -141,6 +143,12 @@ class _HomeScreenState extends State<HomeScreen>
                   }
                 },
                 onOpenSettings: () => Navigator.pushNamed(context, '/settings'),
+                onOpenBiography: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const WriterBiographyScreen(),
+                  ),
+                ),
                 onOpenPlaylists: () => Navigator.push(
                   context,
                   MaterialPageRoute(
@@ -152,6 +160,8 @@ class _HomeScreenState extends State<HomeScreen>
 
             // Daily Wisdom Inspiring Card
             const SliverToBoxAdapter(child: DailyWisdomCard()),
+
+            const SliverToBoxAdapter(child: WriterHomeCard()),
 
             if (settings.favoriteSyncError != null)
               SliverToBoxAdapter(
@@ -300,7 +310,12 @@ class _HomeScreenState extends State<HomeScreen>
                 resourceProv.selectedCategory == 'All' &&
                 resourceProv.selectedType == 'all')
               SliverToBoxAdapter(
-                child: FeaturedHeroCard(resource: featuredItem),
+                child: Center(
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 1050),
+                    child: FeaturedHeroCard(resource: featuredItem),
+                  ),
+                ),
               ),
 
             // A single compact, horizontally scrolling type selector.
@@ -322,6 +337,8 @@ class _HomeScreenState extends State<HomeScreen>
               resourceProv.fetchCategories(),
               resourceProv.fetchResources(),
               resourceProv.fetchCuratedQuotes(),
+              resourceProv.fetchDailyQuoteSelection(),
+              resourceProv.fetchDailyQuoteSchedule(),
               resourceProv.fetchPlaylists(),
             ]);
           },

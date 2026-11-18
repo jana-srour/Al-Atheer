@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../models/resource_model.dart';
+import 'editorial_photo.dart';
 import 'resource_detail_sheet.dart';
 
 class FeaturedHeroCard extends StatelessWidget {
@@ -27,6 +28,15 @@ class FeaturedHeroCard extends StatelessWidget {
       'post' => 'عرض المنشور',
       _ => 'قراءة الفائدة',
     };
+    final coverUrl = resource.coverUrl;
+    final galleryImages = <String>[];
+    if (coverUrl != null) galleryImages.add(coverUrl);
+    for (final attachment in resource.attachments) {
+      if (attachment.type == 'image' &&
+          !galleryImages.contains(attachment.url)) {
+        galleryImages.add(attachment.url);
+      }
+    }
 
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -119,6 +129,14 @@ class FeaturedHeroCard extends StatelessWidget {
                 const SizedBox(height: 14),
 
                 // Main Content
+                if (coverUrl != null) ...[
+                  EditorialPhoto(
+                    imageUrl: coverUrl,
+                    badgeText: resource.typeLabel,
+                    galleryImages: galleryImages,
+                  ),
+                  const SizedBox(height: 14),
+                ],
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [

@@ -23,6 +23,7 @@ class PlaylistLibraryScreen extends StatelessWidget {
                   id: playlist.id,
                   title: playlist.title,
                   description: playlist.description,
+                  coverImageUrl: playlist.coverImageUrl,
                   createdAt: playlist.createdAt,
                   resources: playlist.resources
                       .where(

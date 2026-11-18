@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/playlist_model.dart';
 import '../screens/playlist_detail_screen.dart';
+import 'cover_image.dart';
 
 class PlaylistLibraryView extends StatelessWidget {
   final List<PlaylistModel> playlists;
@@ -61,9 +62,17 @@ class PlaylistLibraryView extends StatelessWidget {
             return Card(
               margin: const EdgeInsets.only(bottom: 10),
               child: ListTile(
-                leading: const CircleAvatar(
-                  backgroundColor: Color(0x1AF59E0B),
-                  child: Icon(Icons.queue_music_rounded, color: gold),
+                contentPadding: const EdgeInsetsDirectional.fromSTEB(
+                  12,
+                  8,
+                  16,
+                  8,
+                ),
+                leading: CoverImage(
+                  imageUrl: playlist.coverImageUrl,
+                  width: 68,
+                  height: 68,
+                  fallbackIcon: Icons.queue_music_rounded,
                 ),
                 title: Text(
                   playlist.title,

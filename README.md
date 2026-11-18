@@ -68,3 +68,19 @@ run [`supabase_archive_credentials.sql`](./supabase_archive_credentials.sql)
 once in the Supabase SQL Editor. It creates an admin-only table. The app keeps
 an installation cache for offline uploads, while Supabase is the shared source
 after the migration is installed.
+
+In **إدارة درر اليوم**, administrators select the curated quotes used by the
+daily quote card. To enable date scheduling, run
+[`supabase_daily_quote_schedule.sql`](./supabase_daily_quote_schedule.sql)
+once in the Supabase SQL Editor. A scheduled quote takes precedence on its
+date; unscheduled dates use the checked quotes, without repeating a quote
+until the current random cycle is exhausted. Text resources published in the
+library are not used as daily quotes.
+
+## Writer biography sections
+
+Run [`supabase_writer_sections.sql`](./supabase_writer_sections.sql) in the
+Supabase SQL Editor before using the dynamic writer page. It adds an ordered
+JSONB sections field to the publicly readable writer profile and an
+administrator-only save function. Each section has an admin-defined title and
+body; existing biography text is retained and displayed as a legacy section.

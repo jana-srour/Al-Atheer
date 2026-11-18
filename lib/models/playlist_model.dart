@@ -4,6 +4,7 @@ class PlaylistModel {
   final int id;
   final String title;
   final String? description;
+  final String? coverImageUrl;
   final DateTime createdAt;
   final List<ResourceModel> resources;
 
@@ -11,6 +12,7 @@ class PlaylistModel {
     required this.id,
     required this.title,
     this.description,
+    this.coverImageUrl,
     required this.createdAt,
     this.resources = const [],
   });
@@ -23,6 +25,7 @@ class PlaylistModel {
       id: json['id'] as int,
       title: json['title']?.toString() ?? '',
       description: json['description']?.toString(),
+      coverImageUrl: json['cover_image_url']?.toString(),
       createdAt: DateTime.parse(json['created_at'].toString()),
       resources: resources,
     );

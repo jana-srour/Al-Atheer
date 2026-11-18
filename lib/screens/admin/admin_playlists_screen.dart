@@ -4,6 +4,8 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../models/playlist_model.dart';
 import '../../models/resource_model.dart';
 import '../../providers/resource_provider.dart';
+import '../../widgets/archive_cover_editor.dart';
+import '../../widgets/cover_image.dart';
 
 class AdminPlaylistsScreen extends StatefulWidget {
   const AdminPlaylistsScreen({super.key});
@@ -162,8 +164,11 @@ class _AdminPlaylistsScreenState extends State<AdminPlaylistsScreen> {
                         .join('، ');
                     return Card(
                       child: ListTile(
-                        leading: const CircleAvatar(
-                          child: Icon(Icons.queue_music_rounded),
+                        leading: CoverImage(
+                          imageUrl: playlist.coverImageUrl,
+                          width: 58,
+                          height: 58,
+                          fallbackIcon: Icons.queue_music_rounded,
                         ),
                         title: Text(playlist.title),
                         subtitle: Text(
@@ -249,6 +254,7 @@ class _PlaylistEditorDialogState extends State<_PlaylistEditorDialog> {
   late final TextEditingController _titleController;
   late final TextEditingController _descriptionController;
   late final Set<int> _selectedResourceIds;
+  String? _coverImageUrl;
   String _searchQuery = '';
   String? _saveError;
   bool _isSaving = false;
@@ -262,6 +268,7 @@ class _PlaylistEditorDialogState extends State<_PlaylistEditorDialog> {
     _descriptionController = TextEditingController(
       text: widget.playlist?.description ?? '',
     );
+    _coverImageUrl = widget.playlist?.coverImageUrl;
     _selectedResourceIds =
         widget.playlist?.resources.map((resource) => resource.id).toSet() ??
         <int>{};
@@ -291,6 +298,7 @@ class _PlaylistEditorDialogState extends State<_PlaylistEditorDialog> {
         title: title,
         description: _descriptionController.text.trim(),
         resourceIds: _selectedResourceIds.toList(),
+        coverImageUrl: _coverImageUrl,
       );
       if (mounted) Navigator.pop(context, true);
     } catch (error) {
@@ -320,7 +328,7 @@ class _PlaylistEditorDialogState extends State<_PlaylistEditorDialog> {
       ),
       content: SizedBox(
         width: 560,
-        height: MediaQuery.sizeOf(context).height * 0.5,
+        height: (MediaQuery.sizeOf(context).height * 0.55).clamp(280.0, 620.0),
         child: Column(
           children: [
             TextField(
@@ -332,6 +340,12 @@ class _PlaylistEditorDialogState extends State<_PlaylistEditorDialog> {
               controller: _descriptionController,
               decoration: const InputDecoration(labelText: 'وصف (اختياري)'),
               maxLines: 2,
+            ),
+            const SizedBox(height: 12),
+            ArchiveCoverEditor(
+              imageUrl: _coverImageUrl,
+              uploadTitle: _titleController.text,
+              onChanged: (url) => setState(() => _coverImageUrl = url),
             ),
             const SizedBox(height: 8),
             TextField(

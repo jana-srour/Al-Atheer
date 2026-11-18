@@ -8,6 +8,7 @@ import '../../models/resource_model.dart';
 import '../../providers/resource_provider.dart';
 import '../../providers/settings_provider.dart';
 import '../../services/archive_upload_service.dart';
+import '../../widgets/archive_cover_editor.dart';
 
 class AdminUploadWidget extends StatefulWidget {
   final VoidCallback? onPublished;
@@ -25,6 +26,8 @@ class _AdminUploadWidgetState extends State<AdminUploadWidget> {
   final _textContentController = TextEditingController();
 
   List<PlatformFile> _selectedFiles = [];
+  String? _coverImageUrl;
+  bool _coverImageHidden = false;
   String _resourceType = 'pdf';
   String _selectedCategory = 'Fiqh';
 
@@ -35,6 +38,16 @@ class _AdminUploadWidgetState extends State<AdminUploadWidget> {
   bool get _requiresArchiveKeys =>
       _resourceType != 'text' &&
       (_resourceType != 'post' || _selectedFiles.isNotEmpty);
+
+  PlatformFile? get _firstSelectedImage {
+    const imageExtensions = {'jpg', 'jpeg', 'png', 'gif', 'webp'};
+    for (final file in _selectedFiles) {
+      final extension =
+          file.extension ?? file.name.split('.').last.toLowerCase();
+      if (imageExtensions.contains(extension.toLowerCase())) return file;
+    }
+    return null;
+  }
 
   // Active Ingestion Tracker State for newly uploaded item
   ResourceModel? _lastUploadedResource;
@@ -449,6 +462,20 @@ class _AdminUploadWidgetState extends State<AdminUploadWidget> {
         _uploadStatus = 'Saving record in Supabase database...';
       });
 
+      Map<String, dynamic>? firstImageAttachment;
+      for (final attachment in uploadedAttachments) {
+        if (attachment['type'] == 'image') {
+          firstImageAttachment = attachment;
+          break;
+        }
+      }
+      final firstImageUrl = firstImageAttachment == null
+          ? null
+          : firstImageAttachment['url']?.toString();
+      final coverImageUrl = _resourceType == 'post' && !_coverImageHidden
+          ? _coverImageUrl ?? firstImageUrl
+          : null;
+
       final insertResponse = await Supabase.instance.client
           .from('resources')
           .insert({
@@ -466,6 +493,8 @@ class _AdminUploadWidgetState extends State<AdminUploadWidget> {
             'attachments': _resourceType == 'post'
                 ? uploadedAttachments
                 : <Map<String, dynamic>>[],
+            'cover_image_url': coverImageUrl,
+            'cover_image_hidden': _resourceType == 'post' && _coverImageHidden,
             'category': _selectedCategory,
           })
           .select()
@@ -486,6 +515,8 @@ class _AdminUploadWidgetState extends State<AdminUploadWidget> {
         _uploadProgress = 1.0;
         _uploadStatus = 'Successfully Published!';
         _selectedFiles = [];
+        _coverImageUrl = null;
+        _coverImageHidden = false;
       });
 
       _titleController.clear();
@@ -1157,6 +1188,27 @@ class _AdminUploadWidgetState extends State<AdminUploadWidget> {
                     ),
                   ),
 
+                  if (_resourceType == 'post') ...[
+                    const SizedBox(height: 14),
+                    ArchiveCoverEditor(
+                      imageUrl: _coverImageUrl,
+                      previewBytes: _coverImageHidden
+                          ? null
+                          : _firstSelectedImage?.bytes,
+                      uploadTitle: _titleController.text,
+                      onChanged: (url) => setState(() {
+                        _coverImageUrl = url;
+                        _coverImageHidden = url == null;
+                      }),
+                    ),
+                    const SizedBox(height: 6),
+                    const Text(
+                      'أول صورة في مرفقات المنشور تُستخدم غلافاً تلقائياً، '
+                      'ويمكنك رفع غلاف مستقل أو إزالة الغلاف.',
+                      style: TextStyle(fontSize: 12, color: Colors.grey),
+                    ),
+                  ],
+
                   const SizedBox(height: 20),
 
                   // Upload Progress Section
@@ -1315,6 +1367,10 @@ class _AdminUploadWidgetState extends State<AdminUploadWidget> {
           setState(() {
             _resourceType = type;
             _selectedFiles = [];
+            if (type != 'post') {
+              _coverImageUrl = null;
+              _coverImageHidden = false;
+            }
           });
         }
       },

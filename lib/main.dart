@@ -13,6 +13,7 @@ import 'screens/settings_screen.dart';
 import 'screens/admin/admin_dashboard_screen.dart';
 import 'screens/admin/admin_access_guard.dart';
 import 'screens/password_recovery_screen.dart';
+import 'screens/writer_biography_screen.dart';
 import 'localization/app_strings.dart';
 
 void main() async {
@@ -196,7 +197,7 @@ class _AlAtheerAppState extends State<AlAtheerApp> {
       // The user's in-app selection must win over the device locale. If the
       // callback picks the device language here, Directionality follows the
       // selected setting while Localizations.localeOf(context) stays Arabic.
-      localeResolutionCallback: (_, __) => settings.locale,
+      localeResolutionCallback: (_, _) => settings.locale,
       localizationsDelegates: const [
         GlobalMaterialLocalizations.delegate,
         GlobalWidgetsLocalizations.delegate,
@@ -363,6 +364,7 @@ class _AlAtheerAppState extends State<AlAtheerApp> {
         '/': (context) => const HomeScreen(),
         '/login': (context) => const LoginScreen(),
         '/settings': (context) => const SettingsScreen(),
+        '/writer': (context) => const WriterBiographyScreen(),
         '/admin': (context) =>
             AdminAccessGuard(child: const AdminDashboardScreen()),
         '/password-recovery': (context) => const PasswordRecoveryScreen(),
