@@ -126,8 +126,8 @@ class ResourceProvider extends ChangeNotifier {
       final response = await _supabase
           .from('categories')
           .select('name')
-          .order('sort_order')
-          .order('name');
+          .order('sort_order', ascending: true)
+          .order('name', ascending: true);
       final List<dynamic> dataList = response as List<dynamic>;
       _categories = dataList
           .map((c) => c['name']?.toString() ?? '')

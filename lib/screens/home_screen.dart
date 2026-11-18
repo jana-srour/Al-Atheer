@@ -301,80 +301,90 @@ class _HomeScreenState extends State<HomeScreen>
                     const SizedBox(height: 10),
 
                     // Category Pill Bar
-                    SingleChildScrollView(
-                      scrollDirection: Axis.horizontal,
-                      child: Row(
-                        children:
-                            resourceProv.categories.map((cat) {
-                              final isSelected =
-                                  resourceProv.selectedCategory == cat;
-                              return Padding(
-                                padding: const EdgeInsets.only(left: 8.0),
-                                child: ChoiceChip(
-                                  label: Text(cat),
-                                  selected: isSelected,
-                                  onSelected: (_) =>
-                                      resourceProv.setCategoryFilter(cat),
-                                  selectedColor: deepNavy,
-                                  labelStyle: TextStyle(
-                                    fontSize: 12,
-                                    fontWeight: isSelected
-                                        ? FontWeight.bold
-                                        : FontWeight.normal,
-                                    color: isSelected
-                                        ? radiantGold
-                                        : (isDark
-                                              ? Colors.grey.shade300
-                                              : Colors.black87),
+                    Directionality(
+                      textDirection: TextDirection.rtl,
+                      child: SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        child: Row(
+                          textDirection: TextDirection.rtl,
+                          children:
+                              resourceProv.categories.map((cat) {
+                                final isSelected =
+                                    resourceProv.selectedCategory == cat;
+                                return Padding(
+                                  padding: const EdgeInsetsDirectional.only(
+                                    end: 8,
                                   ),
-                                  side: BorderSide(
-                                    color: isSelected
-                                        ? radiantGold
-                                        : (isDark
-                                              ? Colors.grey.shade800
-                                              : Colors.grey.shade300),
-                                    width: isSelected ? 1.4 : 1,
+                                  child: ChoiceChip(
+                                    label: Text(cat),
+                                    selected: isSelected,
+                                    onSelected: (_) =>
+                                        resourceProv.setCategoryFilter(cat),
+                                    selectedColor: deepNavy,
+                                    labelStyle: TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: isSelected
+                                          ? FontWeight.bold
+                                          : FontWeight.normal,
+                                      color: isSelected
+                                          ? radiantGold
+                                          : (isDark
+                                                ? Colors.grey.shade300
+                                                : Colors.black87),
+                                    ),
+                                    side: BorderSide(
+                                      color: isSelected
+                                          ? radiantGold
+                                          : (isDark
+                                                ? Colors.grey.shade800
+                                                : Colors.grey.shade300),
+                                      width: isSelected ? 1.4 : 1,
+                                    ),
                                   ),
-                                ),
-                              );
-                            }).toList()..insert(
-                              0,
-                              Padding(
-                                padding: const EdgeInsets.only(left: 8.0),
-                                child: ChoiceChip(
-                                  label: Text(
-                                    AppStrings.of(context).text('home_all'),
+                                );
+                              }).toList()..add(
+                                Padding(
+                                  padding: const EdgeInsetsDirectional.only(
+                                    end: 8,
                                   ),
-                                  selected:
-                                      resourceProv.selectedCategory == null,
-                                  onSelected: (_) =>
-                                      resourceProv.setCategoryFilter(null),
-                                  selectedColor: deepNavy,
-                                  labelStyle: TextStyle(
-                                    fontSize: 12,
-                                    fontWeight:
-                                        resourceProv.selectedCategory == null
-                                        ? FontWeight.bold
-                                        : FontWeight.normal,
-                                    color: resourceProv.selectedCategory == null
-                                        ? radiantGold
-                                        : (isDark
-                                              ? Colors.grey.shade300
-                                              : Colors.black87),
-                                  ),
-                                  side: BorderSide(
-                                    color: resourceProv.selectedCategory == null
-                                        ? radiantGold
-                                        : (isDark
-                                              ? Colors.grey.shade800
-                                              : Colors.grey.shade300),
-                                    width: resourceProv.selectedCategory == null
-                                        ? 1.4
-                                        : 1,
+                                  child: ChoiceChip(
+                                    label: Text(
+                                      AppStrings.of(context).text('home_all'),
+                                    ),
+                                    selected:
+                                        resourceProv.selectedCategory == null,
+                                    onSelected: (_) =>
+                                        resourceProv.setCategoryFilter(null),
+                                    selectedColor: deepNavy,
+                                    labelStyle: TextStyle(
+                                      fontSize: 12,
+                                      fontWeight:
+                                          resourceProv.selectedCategory == null
+                                          ? FontWeight.bold
+                                          : FontWeight.normal,
+                                      color:
+                                          resourceProv.selectedCategory == null
+                                          ? radiantGold
+                                          : (isDark
+                                                ? Colors.grey.shade300
+                                                : Colors.black87),
+                                    ),
+                                    side: BorderSide(
+                                      color:
+                                          resourceProv.selectedCategory == null
+                                          ? radiantGold
+                                          : (isDark
+                                                ? Colors.grey.shade800
+                                                : Colors.grey.shade300),
+                                      width:
+                                          resourceProv.selectedCategory == null
+                                          ? 1.4
+                                          : 1,
+                                    ),
                                   ),
                                 ),
                               ),
-                            ),
+                        ),
                       ),
                     ),
                   ],
