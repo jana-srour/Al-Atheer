@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
 import '../providers/settings_provider.dart';
 import '../localization/app_strings.dart';
+import 'app_brand_logo.dart';
 
 class IslamicHeaderWidget extends StatelessWidget {
   final VoidCallback onOpenAdmin;
@@ -82,19 +83,16 @@ class IslamicHeaderWidget extends StatelessWidget {
       context: context,
       isScrollControlled: true,
       showDragHandle: true,
-      builder: (_) => _AccountSheet(
-        auth: auth,
-        strings: strings,
-        rootContext: context,
-      ),
+      builder: (_) =>
+          _AccountSheet(auth: auth, strings: strings, rootContext: context),
     );
   }
 
   @override
   Widget build(BuildContext context) {
+    final settings = context.watch<SettingsProvider>();
     const radiantGold = Color(0xFFF59E0B);
     final auth = Provider.of<AuthProvider>(context);
-    final settings = Provider.of<SettingsProvider>(context);
     final hijriDate = toArabicDigits(getTodayHijriDate());
 
     return Container(
@@ -120,156 +118,156 @@ class IslamicHeaderWidget extends StatelessWidget {
                   spacing: 8,
                   runSpacing: 4,
                   children: [
-                // Hijri Date Badge
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 4,
-                  ),
-                  decoration: BoxDecoration(
-                    color: Colors.black.withValues(alpha: 0.25),
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(
-                      color: radiantGold.withValues(alpha: 0.4),
-                      width: 1,
-                    ),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Icon(
-                        Icons.calendar_month_outlined,
-                        size: 13,
-                        color: radiantGold,
+                    // Hijri Date Badge
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 4,
                       ),
-                      const SizedBox(width: 6),
-                      Text(
-                        hijriDate,
-                        style: const TextStyle(
-                          color: radiantGold,
-                          fontSize: 11,
-                          fontWeight: FontWeight.bold,
+                      decoration: BoxDecoration(
+                        color: Colors.black.withValues(alpha: 0.25),
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(
+                          color: radiantGold.withValues(alpha: 0.4),
+                          width: 1,
                         ),
                       ),
-                    ],
-                  ),
-                ),
-
-                // Top Actions (Favorites, Admin, Settings)
-                Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    // Favorites Filter Button
-                    InkWell(
-                      onTap: onToggleFavorites,
-                      borderRadius: BorderRadius.circular(12),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 10,
-                          vertical: 5,
-                        ),
-                        decoration: BoxDecoration(
-                          color: isFavoritesSelected
-                              ? radiantGold
-                              : Colors.white.withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(
-                            color: isFavoritesSelected
-                                ? radiantGold
-                                : radiantGold.withValues(alpha: 0.3),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(
+                            Icons.calendar_month_outlined,
+                            size: 13,
+                            color: radiantGold,
                           ),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(
-                              isFavoritesSelected
-                                  ? Icons.star
-                                  : Icons.star_border,
-                              size: 15,
-                              color: isFavoritesSelected
-                                  ? const Color(0xFF0F172A)
-                                  : Colors.white,
+                          const SizedBox(width: 6),
+                          Text(
+                            hijriDate,
+                            style: const TextStyle(
+                              color: radiantGold,
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold,
                             ),
-                            if (settings.favoriteIds.isNotEmpty) ...[
-                              const SizedBox(width: 4),
-                              Text(
-                                '${settings.favoriteIds.length}',
-                                style: TextStyle(
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.bold,
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    // Top Actions (Favorites, Admin, Settings)
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        // Favorites Filter Button
+                        InkWell(
+                          onTap: onToggleFavorites,
+                          borderRadius: BorderRadius.circular(12),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 5,
+                            ),
+                            decoration: BoxDecoration(
+                              color: isFavoritesSelected
+                                  ? radiantGold
+                                  : Colors.white.withValues(alpha: 0.1),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                color: isFavoritesSelected
+                                    ? radiantGold
+                                    : radiantGold.withValues(alpha: 0.3),
+                              ),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  isFavoritesSelected
+                                      ? Icons.star
+                                      : Icons.star_border,
+                                  size: 15,
                                   color: isFavoritesSelected
                                       ? const Color(0xFF0F172A)
-                                      : radiantGold,
+                                      : Colors.white,
                                 ),
-                              ),
-                            ],
-                          ],
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-
-                    IconButton(
-                      icon: const Icon(
-                        Icons.queue_music_rounded,
-                        color: Colors.white,
-                        size: 20,
-                      ),
-                      tooltip: 'قوائم التشغيل والدورات',
-                      onPressed: onOpenPlaylists,
-                    ),
-
-                    IconButton(
-                      icon: const Icon(
-                        Icons.person_search_rounded,
-                        color: Colors.white,
-                        size: 20,
-                      ),
-                      tooltip: 'عن الكاتب',
-                      onPressed: onOpenBiography,
-                    ),
-
-                    // Admin Studio Shortcut
-                    if (auth.isAuthenticated && auth.isAdmin)
-                      IconButton(
-                        icon: Container(
-                          padding: const EdgeInsets.all(5),
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            border: Border.all(
-                              color: radiantGold.withValues(alpha: 0.6),
+                                if (settings.favoriteIds.isNotEmpty) ...[
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    '${settings.favoriteIds.length}',
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.bold,
+                                      color: isFavoritesSelected
+                                          ? const Color(0xFF0F172A)
+                                          : radiantGold,
+                                    ),
+                                  ),
+                                ],
+                              ],
                             ),
-                            color: radiantGold.withValues(alpha: 0.15),
-                          ),
-                          child: const Icon(
-                            Icons.admin_panel_settings,
-                            color: radiantGold,
-                            size: 16,
                           ),
                         ),
-                        tooltip: AppStrings.of(
-                          context,
-                        ).text('publisher_studio'),
-                        onPressed: onOpenAdmin,
-                      ),
+                        const SizedBox(width: 8),
 
-                    // Settings Button
-                    IconButton(
-                      icon: const Icon(
-                        Icons.tune_rounded,
-                        color: Colors.white70,
-                        size: 20,
-                      ),
-                      tooltip: 'Settings',
-                      onPressed: onOpenSettings,
+                        IconButton(
+                          icon: const Icon(
+                            Icons.queue_music_rounded,
+                            color: Colors.white,
+                            size: 20,
+                          ),
+                          tooltip: 'قوائم التشغيل والدورات',
+                          onPressed: onOpenPlaylists,
+                        ),
+
+                        IconButton(
+                          icon: const Icon(
+                            Icons.person_search_rounded,
+                            color: Colors.white,
+                            size: 20,
+                          ),
+                          tooltip: 'عن الكاتب',
+                          onPressed: onOpenBiography,
+                        ),
+
+                        // Admin Studio Shortcut
+                        if (auth.isAuthenticated && auth.isAdmin)
+                          IconButton(
+                            icon: Container(
+                              padding: const EdgeInsets.all(5),
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                  color: radiantGold.withValues(alpha: 0.6),
+                                ),
+                                color: radiantGold.withValues(alpha: 0.15),
+                              ),
+                              child: const Icon(
+                                Icons.admin_panel_settings,
+                                color: radiantGold,
+                                size: 16,
+                              ),
+                            ),
+                            tooltip: AppStrings.of(
+                              context,
+                            ).text('publisher_studio'),
+                            onPressed: onOpenAdmin,
+                          ),
+
+                        // Settings Button
+                        IconButton(
+                          icon: const Icon(
+                            Icons.tune_rounded,
+                            color: Colors.white70,
+                            size: 20,
+                          ),
+                          tooltip: 'Settings',
+                          onPressed: onOpenSettings,
+                        ),
+                      ],
                     ),
-                    ],
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
-          ),
             const SizedBox(height: 8),
             Align(
               alignment: AlignmentDirectional.centerEnd,
@@ -350,19 +348,19 @@ class IslamicHeaderWidget extends StatelessWidget {
                       ),
                     ],
                   ),
-                  child: const Icon(
-                    Icons.auto_stories,
-                    size: 24,
-                    color: Color(0xFF0F172A),
+                  child: AppBrandLogo(
+                    imageUrl: settings.appLogoUrl,
+                    size: 40,
+                    fallbackColor: const Color(0xFF0F172A),
                   ),
                 ),
                 const SizedBox(width: 14),
-                const Expanded(
+                Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'الأثير للنشر والتوزيع',
+                        settings.appName,
                         style: TextStyle(
                           color: Colors.white,
                           fontSize: 20,
@@ -372,8 +370,10 @@ class IslamicHeaderWidget extends StatelessWidget {
                       ),
                       SizedBox(height: 2),
                       Text(
-                        'Al-Atheer Islamic Library & Digital Media',
-                        style: TextStyle(
+                        settings.isArabic
+                            ? settings.appNameEn
+                            : settings.appNameAr,
+                        style: const TextStyle(
                           color: Color(0xFFFBBF24),
                           fontSize: 11,
                           fontWeight: FontWeight.w400,
@@ -461,7 +461,9 @@ class _AccountSheetState extends State<_AccountSheet> {
                         Text(
                           auth.user?.email ?? '',
                           style: TextStyle(
-                            color: Theme.of(context).colorScheme.onSurfaceVariant,
+                            color: Theme.of(
+                              context,
+                            ).colorScheme.onSurfaceVariant,
                             fontSize: 12,
                           ),
                         ),
@@ -500,16 +502,14 @@ class _AccountSheetState extends State<_AccountSheet> {
                         );
                         if (!context.mounted) return;
                         if (error != null) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text(error)),
-                          );
+                          ScaffoldMessenger.of(
+                            context,
+                          ).showSnackBar(SnackBar(content: Text(error)));
                           return;
                         }
                         Navigator.pop(context);
                         if (widget.rootContext.mounted) {
-                          ScaffoldMessenger.of(
-                            widget.rootContext,
-                          ).showSnackBar(
+                          ScaffoldMessenger.of(widget.rootContext).showSnackBar(
                             SnackBar(
                               content: Text(strings.text('profile_saved')),
                             ),

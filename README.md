@@ -77,6 +77,55 @@ date; unscheduled dates use the checked quotes, without repeating a quote
 until the current random cycle is exhausted. Text resources published in the
 library are not used as daily quotes.
 
+## Categories, Azkar, and scheduled reminders
+
+The admin category manager supports renaming a category and updates the
+category value on all library resources and Azkar in the same database
+transaction. Existing posts remain editable and deletable from the resource
+list; their text, metadata, cover, and attachment links can also be edited.
+
+Administrators can create and manage Azkar reminders from the dashboard and
+assign them to an existing category. Each reminder includes its content,
+source/details, repetition count, category, and scheduled date/time. The
+Supabase project must provide the `azkar` and `web_push_subscriptions` tables,
+their required row-level security policies, and the protected
+`rename_category` function. Their SQL setup is not included in this repository.
+
+On Android and iOS, users must enable reminders on the Azkar page and grant
+notification permission. Upcoming reminders are scheduled locally on that
+device. The app synchronizes the schedule when it is opened; a new reminder
+added after a device has gone offline will be scheduled the next time that app
+opens. The sound toggle in Settings updates pending local reminders.
+
+Closed-tab web push additionally requires:
+
+1. Enable Push API support by generating VAPID keys (for example with
+   `npx web-push generate-vapid-keys`), then deploy
+   `supabase/functions/dispatch-azkar` with the `VAPID_PUBLIC_KEY`,
+   `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT`, and a strong `DISPATCH_SECRET`
+   configured as Supabase function secrets.
+2. Build the Flutter web app with the public key:
+   `--dart-define=WEB_PUSH_VAPID_PUBLIC_KEY=<VAPID_PUBLIC_KEY>`.
+3. Configure a trusted scheduler to invoke the Edge Function every minute.
+4. Signed-in web users must opt in to notifications on the Azkar page. Web
+   notifications use the browser/operating-system notification sound; the
+   Settings sound toggle marks web pushes silent when sound is disabled.
+
+The browser must support Web Push and the deployed site must use HTTPS. The
+Edge Function setup is required for delivery while the website is closed; the
+Flutter app itself cannot wake a closed browser tab.
+
+## App and website branding
+
+Run [`supabase/app_branding_setup.sql`](./supabase/app_branding_setup.sql) in
+the Supabase SQL Editor. It creates the public branding record and a public
+logo bucket with administrator-only writes. Administrators can edit the Arabic
+and English app names and upload a PNG, JPEG, or WebP logo (up to 5 MB) from
+Settings. The branding updates in the app and website; the website tab title,
+favicon, and manifest are updated when the app loads. The installed Android/iOS
+launcher name and icon remain build-time platform settings and do not change
+from an admin upload.
+
 ## Writer biography sections
 
 Run [`supabase_writer_sections.sql`](./supabase_writer_sections.sql) in the

@@ -18,21 +18,128 @@
 
   <meta charset="UTF-8">
   <meta content="IE=Edge" http-equiv="X-UA-Compatible">
-  <meta name="description" content="A new Flutter project.">
+  <meta name="description" content="Al-Atheer Islamic Library & Digital Media">
 
   <!-- iOS meta tags & icons -->
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black">
-  <meta name="apple-mobile-web-app-title" content="al_atheer">
+  <meta name="apple-mobile-web-app-title" content="Al-Atheer">
   <link rel="apple-touch-icon" href="icons/Icon-192.png">
 
   <!-- Favicon -->
   <link rel="icon" type="image/png" href="favicon.png"/>
 
-  <title>al_atheer</title>
+  <title>Al-Atheer</title>
   <link rel="manifest" href="manifest.json">
 </head>
 <body>
+  <script>
+    window.AlAtheerBranding = {
+      apply(appName, logoUrl) {
+        document.title = appName;
+        const appleTitle = document.querySelector(
+          'meta[name="apple-mobile-web-app-title"]',
+        );
+        if (appleTitle) appleTitle.content = appName;
+        const description = document.querySelector('meta[name="description"]');
+        if (description) description.content = appName;
+
+        if (logoUrl) {
+          const icon = document.querySelector('link[rel="icon"]');
+          const appleIcon = document.querySelector('link[rel="apple-touch-icon"]');
+          if (icon) icon.href = logoUrl;
+          if (appleIcon) appleIcon.href = logoUrl;
+        }
+
+        const manifestLink = document.querySelector('link[rel="manifest"]');
+        if (!manifestLink) return;
+        const manifest = {
+          name: appName,
+          short_name: appName.slice(0, 12),
+          start_url: document.baseURI,
+          scope: new URL('.', document.baseURI).href,
+          display: 'standalone',
+          background_color: '#0F172A',
+          theme_color: '#0F172A',
+          description: appName,
+          orientation: 'portrait-primary',
+          prefer_related_applications: false,
+          icons: logoUrl
+            ? [{ src: logoUrl, purpose: 'any' }]
+            : [
+                { src: 'icons/Icon-192.png', sizes: '192x192', type: 'image/png' },
+                { src: 'icons/Icon-512.png', sizes: '512x512', type: 'image/png' },
+              ],
+        };
+        const previousManifestUrl = window.__AlAtheerManifestUrl;
+        window.__AlAtheerManifestUrl = URL.createObjectURL(
+          new Blob([JSON.stringify(manifest)], {
+            type: 'application/manifest+json',
+          }),
+        );
+        manifestLink.href = window.__AlAtheerManifestUrl;
+        if (previousManifestUrl) {
+          window.setTimeout(() => URL.revokeObjectURL(previousManifestUrl), 60000);
+        }
+      },
+    };
+  </script>
+  <script>
+    window.AlAtheerPush = {
+      async subscribe(applicationServerKey) {
+        if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+          throw new Error('This browser does not support web push notifications.');
+        }
+        const permission = await Notification.requestPermission();
+        if (permission !== 'granted') {
+          throw new Error('Notification permission was not granted.');
+        }
+        const workerUrl = new URL('azkar-push/azkar-sw.js', document.baseURI);
+        const workerScope = new URL('azkar-push/', document.baseURI);
+        const registration = await navigator.serviceWorker.register(
+          workerUrl.pathname,
+          { scope: workerScope.pathname },
+        );
+        const worker =
+          registration.installing || registration.waiting || registration.active;
+        if (worker && worker.state !== 'activated') {
+          await new Promise((resolve) => {
+            const onStateChange = () => {
+              if (worker.state === 'activated') {
+                worker.removeEventListener('statechange', onStateChange);
+                resolve();
+              }
+            };
+            worker.addEventListener('statechange', onStateChange);
+          });
+        }
+        let subscription = await registration.pushManager.getSubscription();
+        if (!subscription) {
+          const padding = '='.repeat((4 - applicationServerKey.length % 4) % 4);
+          const base64 = (applicationServerKey + padding)
+            .replace(/-/g, '+')
+            .replace(/_/g, '/');
+          const applicationServerKeyBytes = Uint8Array.from(
+            atob(base64),
+            (character) => character.charCodeAt(0),
+          );
+          subscription = await registration.pushManager.subscribe({
+            userVisibleOnly: true,
+            applicationServerKey: applicationServerKeyBytes,
+          });
+        }
+        return JSON.stringify(subscription.toJSON());
+      },
+      async current() {
+        const workerScope = new URL('azkar-push/', document.baseURI);
+        const registration = await navigator.serviceWorker.getRegistration(
+          workerScope.pathname,
+        );
+        const subscription = await registration?.pushManager.getSubscription();
+        return subscription ? JSON.stringify(subscription.toJSON()) : '';
+      },
+    };
+  </script>
   <script src="flutter_bootstrap.js" async></script>
 </body>
 </html>

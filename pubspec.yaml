@@ -1,7 +1,7 @@
 name: al_atheer
 description: "A production cross-platform app for an Islamic Publisher powered by Supabase & Internet Archive."
 publish_to: 'none'
-version: 0.2.0
+version: 0.3.0
 
 environment:
   sdk: ^3.10.1
@@ -26,6 +26,9 @@ dependencies:
   cupertino_icons: ^1.0.6
   http: ^1.2.0
   path_provider: ^2.1.2
+  flutter_local_notifications: ^21.0.0
+  timezone: ^0.11.2
+  flutter_timezone: ^5.1.1
 
 dev_dependencies:
   flutter_test:

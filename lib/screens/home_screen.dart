@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/resource_model.dart';
 import '../providers/resource_provider.dart';
+import '../providers/azkar_provider.dart';
 import '../providers/auth_provider.dart';
 import '../providers/settings_provider.dart';
 import '../widgets/audio_player_widget.dart';
@@ -99,6 +100,7 @@ class _HomeScreenState extends State<HomeScreen>
   Widget build(BuildContext context) {
     final auth = Provider.of<AuthProvider>(context);
     final resourceProv = Provider.of<ResourceProvider>(context);
+    final azkarProv = Provider.of<AzkarProvider>(context);
     final settings = Provider.of<SettingsProvider>(context);
     final isDark = Theme.of(context).brightness == Brightness.dark;
     const radiantGold = Color(0xFFF59E0B);
@@ -124,6 +126,28 @@ class _HomeScreenState extends State<HomeScreen>
           )
           .toList();
     }
+
+    final azkarSearch = resourceProv.searchQuery.trim().toLowerCase();
+    final displayAzkar =
+        _isFavoritesOnly ||
+            (resourceProv.selectedType != 'all' &&
+                resourceProv.selectedType != 'post')
+        ? const []
+        : azkarProv.azkar
+              .where(
+                (item) =>
+                    resourceProv.selectedCategory == 'All' ||
+                    item.category == resourceProv.selectedCategory,
+              )
+              .where(
+                (item) =>
+                    azkarSearch.isEmpty ||
+                    item.title.toLowerCase().contains(azkarSearch) ||
+                    item.content.toLowerCase().contains(azkarSearch) ||
+                    (item.description?.toLowerCase().contains(azkarSearch) ??
+                        false),
+              )
+              .toList(growable: false);
 
     final featuredItem = displayList.isNotEmpty ? displayList.first : null;
     return Scaffold(
@@ -162,6 +186,23 @@ class _HomeScreenState extends State<HomeScreen>
             const SliverToBoxAdapter(child: DailyWisdomCard()),
 
             const SliverToBoxAdapter(child: WriterHomeCard()),
+
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+                child: Card(
+                  child: ListTile(
+                    leading: const CircleAvatar(
+                      child: Icon(Icons.auto_awesome_outlined),
+                    ),
+                    title: const Text('الأذكار المجدولة'),
+                    subtitle: const Text('أذكار وأدعية وآيات مع تنبيهات'),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: () => Navigator.pushNamed(context, '/azkar'),
+                  ),
+                ),
+              ),
+            ),
 
             if (settings.favoriteSyncError != null)
               SliverToBoxAdapter(
@@ -340,14 +381,17 @@ class _HomeScreenState extends State<HomeScreen>
               resourceProv.fetchDailyQuoteSelection(),
               resourceProv.fetchDailyQuoteSchedule(),
               resourceProv.fetchPlaylists(),
+              azkarProv.fetchAzkar(),
             ]);
           },
           child: ListView.builder(
             physics: const AlwaysScrollableScrollPhysics(),
             padding: const EdgeInsets.fromLTRB(14, 10, 14, 80),
-            itemCount: resourceProv.isLoading || displayList.isEmpty
+            itemCount:
+                resourceProv.isLoading ||
+                    (displayList.isEmpty && displayAzkar.isEmpty)
                 ? 1
-                : displayList.length,
+                : displayList.length + displayAzkar.length,
             itemBuilder: (context, index) {
               if (resourceProv.isLoading) {
                 return SizedBox(
@@ -358,7 +402,7 @@ class _HomeScreenState extends State<HomeScreen>
                 );
               }
 
-              if (displayList.isEmpty) {
+              if (displayList.isEmpty && displayAzkar.isEmpty) {
                 return SizedBox(
                   height: MediaQuery.sizeOf(context).height * 0.6,
                   child: Center(
@@ -429,6 +473,69 @@ class _HomeScreenState extends State<HomeScreen>
                             },
                           ),
                         ],
+                      ),
+                    ),
+                  ),
+                );
+              }
+
+              if (index >= displayList.length) {
+                final item = displayAzkar[index - displayList.length];
+                return Center(
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 1050),
+                    child: Card(
+                      child: Padding(
+                        padding: const EdgeInsets.all(18),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            Row(
+                              children: [
+                                const Icon(
+                                  Icons.auto_awesome_outlined,
+                                  color: radiantGold,
+                                ),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    item.title,
+                                    style: Theme.of(
+                                      context,
+                                    ).textTheme.titleMedium,
+                                  ),
+                                ),
+                                Text(
+                                  item.category,
+                                  style: Theme.of(context).textTheme.labelSmall,
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 10),
+                            SelectableText(
+                              item.content,
+                              textAlign: TextAlign.center,
+                              style: const TextStyle(fontSize: 20, height: 1.8),
+                            ),
+                            if (item.description?.isNotEmpty == true) ...[
+                              const SizedBox(height: 8),
+                              Text(item.description!),
+                            ],
+                            if (item.source?.isNotEmpty == true) ...[
+                              const SizedBox(height: 4),
+                              Text(
+                                item.source!,
+                                style: Theme.of(context).textTheme.bodySmall,
+                              ),
+                            ],
+                            const Divider(),
+                            Text(
+                              'موعد التذكير: ${item.scheduledAt.toLocal()} • '
+                              'يكرر ${item.repetitionCount} مرات',
+                              textAlign: TextAlign.center,
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   ),

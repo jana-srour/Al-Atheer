@@ -4,9 +4,11 @@ import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'providers/auth_provider.dart';
+import 'providers/azkar_provider.dart';
 import 'providers/resource_provider.dart';
 import 'providers/settings_provider.dart';
 import 'screens/home_screen.dart';
+import 'screens/azkar_screen.dart';
 import 'screens/login_screen.dart';
 import 'screens/splash_screen.dart';
 import 'screens/settings_screen.dart';
@@ -93,6 +95,7 @@ class _AppBootstrapState extends State<AppBootstrap> {
       providers: [
         ChangeNotifierProvider(create: (_) => AuthProvider()),
         ChangeNotifierProvider(create: (_) => ResourceProvider()),
+        ChangeNotifierProvider(create: (_) => AzkarProvider(), lazy: false),
         ChangeNotifierProvider(create: (_) => SettingsProvider()),
       ],
       child: const AlAtheerApp(),
@@ -187,7 +190,7 @@ class _AlAtheerAppState extends State<AlAtheerApp> {
     const amberLight = Color(0xFFFBBF24);
 
     return MaterialApp(
-      title: 'Al-Atheer | الأثير',
+      title: settings.appName,
       debugShowCheckedModeBanner: false,
       themeMode: settings.themeMode,
       locale: settings.locale,
@@ -364,6 +367,7 @@ class _AlAtheerAppState extends State<AlAtheerApp> {
         '/': (context) => const HomeScreen(),
         '/login': (context) => const LoginScreen(),
         '/settings': (context) => const SettingsScreen(),
+        '/azkar': (context) => const AzkarScreen(),
         '/writer': (context) => const WriterBiographyScreen(),
         '/admin': (context) =>
             AdminAccessGuard(child: const AdminDashboardScreen()),

@@ -12,6 +12,7 @@ import '../../widgets/cover_image.dart';
 import 'admin_upload_widget.dart';
 import 'admin_playlists_screen.dart';
 import 'admin_quotes_screen.dart';
+import 'admin_azkar_screen.dart';
 
 class AdminDashboardScreen extends StatefulWidget {
   const AdminDashboardScreen({super.key});
@@ -188,8 +189,16 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
   void _showCategoryManagerDialog() {
     showDialog(
       context: context,
-      builder: (_) =>
-          CategoryManagerDialog(categories: _categories, onChanged: _fetchData),
+      builder: (_) => CategoryManagerDialog(
+        categories: _categories,
+        onChanged: () {
+          _fetchData();
+          Provider.of<ResourceProvider>(
+            context,
+            listen: false,
+          ).fetchCategories();
+        },
+      ),
     );
   }
 
@@ -411,6 +420,13 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
                     Navigator.pushNamed(context, '/writer');
                   case _AdminDashboardAction.categories:
                     _showCategoryManagerDialog();
+                  case _AdminDashboardAction.azkar:
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const AdminAzkarScreen(),
+                      ),
+                    );
                 }
               },
               itemBuilder: (context) => const [
@@ -425,6 +441,10 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
                 PopupMenuItem(
                   value: _AdminDashboardAction.categories,
                   child: Text('إدارة التصنيفات'),
+                ),
+                PopupMenuItem(
+                  value: _AdminDashboardAction.azkar,
+                  child: Text('إدارة الأذكار والتنبيهات'),
                 ),
               ],
             ),
@@ -461,6 +481,14 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
               ),
               tooltip: 'تعديل صفحة الكاتب',
               onPressed: () => Navigator.pushNamed(context, '/writer'),
+            ),
+            IconButton(
+              icon: const Icon(
+                Icons.notifications_active_outlined,
+                color: Colors.white,
+              ),
+              tooltip: 'إدارة الأذكار والتنبيهات',
+              onPressed: _openAzkarManager,
             ),
             IconButton(
               icon: const Icon(Icons.category_outlined, color: Colors.white),
@@ -540,6 +568,11 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
                       ),
                       icon: const Icon(Icons.format_quote_rounded),
                       label: const Text('إدارة درر اليوم'),
+                    ),
+                    OutlinedButton.icon(
+                      onPressed: _openAzkarManager,
+                      icon: const Icon(Icons.notifications_active_outlined),
+                      label: const Text('إدارة الأذكار والتنبيهات'),
                     ),
                   ],
                 ),
@@ -731,6 +764,13 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
       side: BorderSide(
         color: isSelected ? radiantGold : Colors.grey.withValues(alpha: 0.3),
       ),
+    );
+  }
+
+  void _openAzkarManager() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => const AdminAzkarScreen()),
     );
   }
 
@@ -1088,7 +1128,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
   }
 }
 
-enum _AdminDashboardAction { playlists, writer, categories }
+enum _AdminDashboardAction { playlists, writer, categories, azkar }
 
 enum _ResourceAction { checkReadiness, openArchive, edit, delete }
 
@@ -1117,6 +1157,7 @@ class _ResourceEditDialogState extends State<ResourceEditDialog> {
   late TextEditingController _textCtrl;
   late String _type;
   late String _category;
+  late List<ResourceAttachment> _attachments;
   String? _coverImageUrl;
   bool _coverImageHidden = false;
   bool _isSaving = false;
@@ -1135,6 +1176,7 @@ class _ResourceEditDialogState extends State<ResourceEditDialog> {
       text: widget.resourceToEdit.textContent ?? '',
     );
     _type = widget.resourceToEdit.type;
+    _attachments = List.of(widget.resourceToEdit.attachments);
     _coverImageUrl = widget.resourceToEdit.coverImageUrl;
     _coverImageHidden = widget.resourceToEdit.coverImageHidden;
     _category = widget.categories.contains(widget.resourceToEdit.category)
@@ -1171,6 +1213,10 @@ class _ResourceEditDialogState extends State<ResourceEditDialog> {
             'category': _category,
             'cover_image_url': _type == 'post' ? _coverImageUrl : null,
             'cover_image_hidden': _type == 'post' && _coverImageHidden,
+            if (_type == 'post')
+              'attachments': _attachments
+                  .map((attachment) => attachment.toJson())
+                  .toList(),
           })
           .eq('id', widget.resourceToEdit.id);
 
@@ -1270,6 +1316,62 @@ class _ResourceEditDialogState extends State<ResourceEditDialog> {
                   }),
                 ),
                 const SizedBox(height: 12),
+                Align(
+                  alignment: AlignmentDirectional.centerStart,
+                  child: Text(
+                    'مرفقات المنشور',
+                    style: Theme.of(context).textTheme.titleSmall,
+                  ),
+                ),
+                ..._attachments.asMap().entries.map((entry) {
+                  final index = entry.key;
+                  final attachment = entry.value;
+                  return ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    leading: Icon(
+                      attachment.type == 'image'
+                          ? Icons.image_outlined
+                          : Icons.attach_file,
+                    ),
+                    title: Text(
+                      attachment.fileName.isEmpty
+                          ? attachment.url
+                          : attachment.fileName,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    subtitle: Text(
+                      attachment.url,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    trailing: Wrap(
+                      children: [
+                        IconButton(
+                          tooltip: 'تعديل المرفق',
+                          icon: const Icon(Icons.edit_outlined),
+                          onPressed: () =>
+                              _editAttachment(attachment, index: index),
+                        ),
+                        IconButton(
+                          tooltip: 'حذف المرفق',
+                          icon: const Icon(
+                            Icons.delete_outline,
+                            color: Colors.redAccent,
+                          ),
+                          onPressed: () =>
+                              setState(() => _attachments.removeAt(index)),
+                        ),
+                      ],
+                    ),
+                  );
+                }),
+                TextButton.icon(
+                  onPressed: () => _editAttachment(null),
+                  icon: const Icon(Icons.add_link),
+                  label: const Text('إضافة مرفق برابط'),
+                ),
+                const SizedBox(height: 12),
               ],
               TextFormField(
                 controller: _descCtrl,
@@ -1302,6 +1404,111 @@ class _ResourceEditDialogState extends State<ResourceEditDialog> {
       ],
     );
   }
+
+  Future<void> _editAttachment(
+    ResourceAttachment? attachment, {
+    int? index,
+  }) async {
+    final result = await showDialog<ResourceAttachment>(
+      context: context,
+      builder: (context) => _AttachmentEditorDialog(attachment: attachment),
+    );
+    if (result == null || !mounted) return;
+    setState(() {
+      if (index == null) {
+        _attachments.add(result);
+      } else {
+        _attachments[index] = result;
+      }
+    });
+  }
+}
+
+class _AttachmentEditorDialog extends StatefulWidget {
+  final ResourceAttachment? attachment;
+
+  const _AttachmentEditorDialog({required this.attachment});
+
+  @override
+  State<_AttachmentEditorDialog> createState() =>
+      _AttachmentEditorDialogState();
+}
+
+class _AttachmentEditorDialogState extends State<_AttachmentEditorDialog> {
+  late final TextEditingController _urlController;
+  late final TextEditingController _fileNameController;
+  late String _type;
+
+  @override
+  void initState() {
+    super.initState();
+    _urlController = TextEditingController(text: widget.attachment?.url ?? '');
+    _fileNameController = TextEditingController(
+      text: widget.attachment?.fileName ?? '',
+    );
+    _type = widget.attachment?.type ?? 'file';
+  }
+
+  @override
+  void dispose() {
+    _urlController.dispose();
+    _fileNameController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => AlertDialog(
+    title: Text(widget.attachment == null ? 'إضافة مرفق' : 'تعديل المرفق'),
+    content: Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        TextField(
+          controller: _urlController,
+          keyboardType: TextInputType.url,
+          decoration: const InputDecoration(labelText: 'الرابط'),
+        ),
+        TextField(
+          controller: _fileNameController,
+          decoration: const InputDecoration(labelText: 'اسم الملف'),
+        ),
+        DropdownButtonFormField<String>(
+          initialValue: _type,
+          decoration: const InputDecoration(labelText: 'نوع المرفق'),
+          items: const [
+            DropdownMenuItem(value: 'file', child: Text('ملف')),
+            DropdownMenuItem(value: 'image', child: Text('صورة')),
+            DropdownMenuItem(value: 'audio', child: Text('صوت')),
+            DropdownMenuItem(value: 'video', child: Text('فيديو')),
+            DropdownMenuItem(value: 'pdf', child: Text('PDF')),
+          ],
+          onChanged: (value) {
+            if (value != null) setState(() => _type = value);
+          },
+        ),
+      ],
+    ),
+    actions: [
+      TextButton(
+        onPressed: () => Navigator.pop(context),
+        child: const Text('إلغاء'),
+      ),
+      FilledButton(
+        onPressed: () {
+          final url = _urlController.text.trim();
+          if (url.isEmpty) return;
+          Navigator.pop(
+            context,
+            ResourceAttachment(
+              type: _type,
+              url: url,
+              fileName: _fileNameController.text.trim(),
+            ),
+          );
+        },
+        child: const Text('حفظ'),
+      ),
+    ],
+  );
 }
 
 // Category Manager Dialog
@@ -1352,6 +1559,48 @@ class _CategoryManagerDialogState extends State<CategoryManagerDialog> {
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(SnackBar(content: Text('Error deleting category: $e')));
+      }
+    }
+  }
+
+  Future<void> _renameCategory(String oldName) async {
+    final controller = TextEditingController(text: oldName);
+    final newName = await showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('تعديل اسم التصنيف'),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          decoration: const InputDecoration(labelText: 'اسم التصنيف'),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('إلغاء'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, controller.text.trim()),
+            child: const Text('حفظ'),
+          ),
+        ],
+      ),
+    );
+    controller.dispose();
+    if (newName == null || newName.isEmpty || newName == oldName) return;
+
+    try {
+      await Supabase.instance.client.rpc(
+        'rename_category',
+        params: {'p_old_name': oldName, 'p_new_name': newName},
+      );
+      widget.onChanged();
+      if (mounted) Navigator.pop(context);
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('تعذر تعديل التصنيف: $error')));
       }
     }
   }
@@ -1418,6 +1667,12 @@ class _CategoryManagerDialogState extends State<CategoryManagerDialog> {
                       style: const TextStyle(fontWeight: FontWeight.w500),
                     ),
                     trailing: IconButton(
+                      tooltip: 'تعديل اسم التصنيف',
+                      icon: const Icon(Icons.edit_outlined, size: 20),
+                      onPressed: () => _renameCategory(cat),
+                    ),
+                    leading: IconButton(
+                      tooltip: 'حذف التصنيف',
                       icon: const Icon(
                         Icons.delete_outline,
                         color: Colors.redAccent,

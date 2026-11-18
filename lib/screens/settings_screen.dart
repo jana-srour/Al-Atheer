@@ -2,9 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../providers/settings_provider.dart';
+import '../providers/azkar_provider.dart';
+import '../services/web_push_client.dart';
 import '../providers/auth_provider.dart';
 import '../services/archive_upload_service.dart';
 import '../localization/app_strings.dart';
+import 'admin/admin_app_branding_screen.dart';
+import '../widgets/app_brand_logo.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -233,7 +237,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
           children: [
             const Icon(Icons.vpn_key, color: Color(0xFFF59E0B)),
             const SizedBox(width: 10),
-            Text(strings.text('s3_title'), style: const TextStyle(fontSize: 18)),
+            Text(
+              strings.text('s3_title'),
+              style: const TextStyle(fontSize: 18),
+            ),
           ],
         ),
         content: SingleChildScrollView(
@@ -338,7 +345,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 } catch (error) {
                   if (ctx.mounted) {
                     ScaffoldMessenger.of(ctx).showSnackBar(
-                      SnackBar(content: Text('Could not save credentials: $error')),
+                      SnackBar(
+                        content: Text('Could not save credentials: $error'),
+                      ),
                     );
                   }
                 }
@@ -370,107 +379,150 @@ class _SettingsScreenState extends State<SettingsScreen> {
         padding: const EdgeInsets.all(16),
         children: [
           if (auth.isAdmin) ...[
-          _buildSectionHeader(context, strings.text('archive_timer')),
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(14.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      const Icon(Icons.timer_outlined, color: radiantGold),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: Text(
-                          isAr
-                              ? 'مدة الانتظار بعد الرفع (قبل إتاحة التشغيل)'
-                              : 'Buffer Timer After Upload',
-                          style: const TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 14,
+            _buildSectionHeader(context, strings.text('archive_timer')),
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(14.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        const Icon(Icons.timer_outlined, color: radiantGold),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            isAr
+                                ? 'مدة الانتظار بعد الرفع (قبل إتاحة التشغيل)'
+                                : 'Buffer Timer After Upload',
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14,
+                            ),
                           ),
                         ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    isAr
-                        ? 'يستغرق أرشيف الإنترنت وقتاً لفهرسة الملف وتوزيعه على خوادمه العالمية. ضبط هذا المؤقت يمنع ظهور خطأ (غير موجود) عند محاولة الفتح فوراً بعد الرفع.'
-                        : 'Archive.org takes time to derive and cache media. This timer prevents 404 Not Found errors.',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
-                      height: 1.4,
+                      ],
                     ),
-                  ),
-                  const SizedBox(height: 12),
-                  Wrap(
-                    spacing: 8,
-                    children: [60, 90, 120, 180].map((sec) {
-                      final isSelected =
-                          settings.archiveIngestionDelaySeconds == sec;
-                      final label = sec == 60
-                          ? '60 ثانية (سريع)'
-                          : sec == 90
-                          ? '90 ثانية'
-                          : sec == 120
-                          ? '120 ثانية (موصى به)'
-                          : '180 ثانية (مضمون)';
-                      return ChoiceChip(
-                        label: Text(label),
-                        selected: isSelected,
-                        selectedColor: deepEmerald,
-                        labelStyle: TextStyle(
-                          color: isSelected ? radiantGold : null,
-                          fontWeight: isSelected
-                              ? FontWeight.bold
-                              : FontWeight.normal,
-                          fontSize: 11,
-                        ),
-                        side: BorderSide(
-                          color: isSelected
-                              ? radiantGold
-                              : Colors.grey.withValues(alpha: 0.3),
-                        ),
-                        onSelected: (_) =>
-                            settings.setArchiveIngestionDelay(sec),
-                      );
-                    }).toList(),
-                  ),
-                  const Divider(height: 24),
-                  SwitchListTile(
-                    contentPadding: EdgeInsets.zero,
-                    secondary: const Icon(
-                      Icons.visibility_off_outlined,
-                      color: radiantGold,
-                    ),
-                    title: Text(
+                    const SizedBox(height: 6),
+                    Text(
                       isAr
-                          ? 'إخفاء المواد قيد الفهرسة عن الزوار'
-                          : 'Hide pending items from public',
-                      style: const TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
+                          ? 'يستغرق أرشيف الإنترنت وقتاً لفهرسة الملف وتوزيعه على خوادمه العالمية. ضبط هذا المؤقت يمنع ظهور خطأ (غير موجود) عند محاولة الفتح فوراً بعد الرفع.'
+                          : 'Archive.org takes time to derive and cache media. This timer prevents 404 Not Found errors.',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        height: 1.4,
                       ),
                     ),
-                    subtitle: Text(
-                      isAr
-                          ? 'لا تظهر المواد في التطبيق إلا بعد اكتمال جاهزيتها بالكامل'
-                          : 'Items appear in the feed only when indexing completes',
-                      style: const TextStyle(fontSize: 11),
+                    const SizedBox(height: 12),
+                    Wrap(
+                      spacing: 8,
+                      children: [60, 90, 120, 180].map((sec) {
+                        final isSelected =
+                            settings.archiveIngestionDelaySeconds == sec;
+                        final label = sec == 60
+                            ? '60 ثانية (سريع)'
+                            : sec == 90
+                            ? '90 ثانية'
+                            : sec == 120
+                            ? '120 ثانية (موصى به)'
+                            : '180 ثانية (مضمون)';
+                        return ChoiceChip(
+                          label: Text(label),
+                          selected: isSelected,
+                          selectedColor: deepEmerald,
+                          labelStyle: TextStyle(
+                            color: isSelected ? radiantGold : null,
+                            fontWeight: isSelected
+                                ? FontWeight.bold
+                                : FontWeight.normal,
+                            fontSize: 11,
+                          ),
+                          side: BorderSide(
+                            color: isSelected
+                                ? radiantGold
+                                : Colors.grey.withValues(alpha: 0.3),
+                          ),
+                          onSelected: (_) =>
+                              settings.setArchiveIngestionDelay(sec),
+                        );
+                      }).toList(),
                     ),
-                    value: settings.hideProcessingFromPublic,
-                    onChanged: (val) =>
-                        settings.setHideProcessingFromPublic(val),
-                  ),
-                ],
+                    const Divider(height: 24),
+                    SwitchListTile(
+                      contentPadding: EdgeInsets.zero,
+                      secondary: const Icon(
+                        Icons.visibility_off_outlined,
+                        color: radiantGold,
+                      ),
+                      title: Text(
+                        isAr
+                            ? 'إخفاء المواد قيد الفهرسة عن الزوار'
+                            : 'Hide pending items from public',
+                        style: const TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      subtitle: Text(
+                        isAr
+                            ? 'لا تظهر المواد في التطبيق إلا بعد اكتمال جاهزيتها بالكامل'
+                            : 'Items appear in the feed only when indexing completes',
+                        style: const TextStyle(fontSize: 11),
+                      ),
+                      value: settings.hideProcessingFromPublic,
+                      onChanged: (val) =>
+                          settings.setHideProcessingFromPublic(val),
+                    ),
+                  ],
+                ),
               ),
+            ),
+            const SizedBox(height: 20),
+          ],
+
+          // Theme Section
+          _buildSectionHeader(context, isAr ? 'التنبيهات' : 'Notifications'),
+          Card(
+            child: SwitchListTile(
+              secondary: const Icon(
+                Icons.notifications_active_outlined,
+                color: radiantGold,
+              ),
+              title: Text(
+                isAr ? 'صوت تنبيهات الأذكار' : 'Azkar reminder sound',
+              ),
+              subtitle: Text(
+                isAr
+                    ? 'تشغيل أو كتم صوت تنبيهات الأذكار المجدولة'
+                    : 'Play or mute scheduled Azkar reminder sounds',
+              ),
+              value: settings.notificationAlarmSoundEnabled,
+              onChanged: (enabled) async {
+                await settings.setNotificationAlarmSoundEnabled(enabled);
+                if (!context.mounted) return;
+                try {
+                  await context.read<AzkarProvider>().refreshLocalReminders(
+                    soundEnabled: enabled,
+                  );
+                  await WebPushClient.updateSound(enabled);
+                } catch (error) {
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(
+                          isAr
+                              ? 'حُفظ الإعداد على الجهاز، لكن تعذر تحديث التنبيهات المجدولة: $error'
+                              : 'Saved on this device, but scheduled reminders could not be updated: $error',
+                        ),
+                      ),
+                    );
+                  }
+                }
+              },
             ),
           ),
           const SizedBox(height: 20),
-          ],
 
           // Theme Section
           _buildSectionHeader(context, strings.text('appearance')),
@@ -566,6 +618,36 @@ class _SettingsScreenState extends State<SettingsScreen> {
           const SizedBox(height: 20),
 
           if (auth.isAdmin) ...[
+            _buildSectionHeader(
+              context,
+              isAr ? 'هوية التطبيق والموقع' : 'App and website branding',
+            ),
+            Card(
+              child: ListTile(
+                leading: AppBrandLogo(
+                  imageUrl: settings.appLogoUrl,
+                  size: 44,
+                  fallbackColor: radiantGold,
+                ),
+                title: Text(
+                  isAr ? 'تعديل اسم وشعار التطبيق' : 'Edit app name and logo',
+                ),
+                subtitle: Text(
+                  settings.appBrandingError ??
+                      (isAr
+                          ? 'يتم تحديث الاسم والشعار داخل التطبيق والموقع'
+                          : 'Updates the name and logo in the app and website'),
+                ),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const AdminAppBrandingScreen(),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 20),
             _buildSectionHeader(context, strings.text('admin_accounts')),
             Card(
               child: ListTile(
@@ -701,17 +783,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       color: radiantGold.withValues(alpha: 0.5),
                     ),
                   ),
-                  child: const Icon(
-                    Icons.auto_stories,
-                    size: 32,
-                    color: radiantGold,
+                  child: AppBrandLogo(
+                    imageUrl: settings.appLogoUrl,
+                    size: 48,
+                    fallbackColor: radiantGold,
                   ),
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  isAr
-                      ? 'تطبيق دار الأثير للنشر • الإصدار 2.5'
-                      : 'Al-Atheer Publisher v2.5',
+                  settings.appName,
                   style: const TextStyle(
                     fontWeight: FontWeight.bold,
                     fontSize: 14,

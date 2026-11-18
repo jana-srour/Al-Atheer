@@ -1,18 +1,28 @@
 import 'dart:async';
+import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../services/web_branding_client.dart';
+
 class SettingsProvider extends ChangeNotifier {
   static const _legacyFavoriteIdsKey = 'favorite_resource_ids';
   static const _guestFavoriteIdsKey = 'favorite_resource_ids_guest';
   static const _userFavoriteIdsKeyPrefix = 'favorite_resource_ids_user_';
+  static const _appBrandingBucket = 'app-branding';
+  static const _maxAppLogoBytes = 5 * 1024 * 1024;
 
   ThemeMode _themeMode = ThemeMode.light;
   Locale _locale = const Locale('ar'); // Default to Arabic
+  String _appNameAr = 'الأثير للنشر والتوزيع';
+  String _appNameEn = 'Al-Atheer Islamic Library & Digital Media';
+  String? _appLogoUrl;
+  String? _appBrandingError;
   double _textScale = 1.0;
   bool _reduceMotion = false;
+  bool _notificationAlarmSoundEnabled = true;
   int _archiveIngestionDelaySeconds = 120; // Default 2 minutes
   bool _hideProcessingFromPublic = false;
   List<int> _favoriteIds = [];
@@ -23,16 +33,23 @@ class SettingsProvider extends ChangeNotifier {
   Future<void> _localFavoriteWrites = Future<void>.value();
   Future<void> _remoteFavoriteWrites = Future<void>.value();
   late final StreamSubscription<AuthState> _authSubscription;
+  late final Future<void> appBrandingReady;
   final SupabaseClient _supabase = Supabase.instance.client;
 
   ThemeMode get themeMode => _themeMode;
   Locale get locale => _locale;
+  String get appNameAr => _appNameAr;
+  String get appNameEn => _appNameEn;
+  String get appName => isArabic ? _appNameAr : _appNameEn;
+  String? get appLogoUrl => _appLogoUrl;
+  String? get appBrandingError => _appBrandingError;
   bool get isDarkMode => _themeMode == ThemeMode.dark;
   bool get isSystemTheme => _themeMode == ThemeMode.system;
   bool get isArabic => _locale.languageCode == 'ar';
   bool get isRtl => const {'ar', 'fa', 'ur'}.contains(_locale.languageCode);
   double get textScale => _textScale;
   bool get reduceMotion => _reduceMotion;
+  bool get notificationAlarmSoundEnabled => _notificationAlarmSoundEnabled;
   int get archiveIngestionDelaySeconds => _archiveIngestionDelaySeconds;
   bool get hideProcessingFromPublic => _hideProcessingFromPublic;
   List<int> get favoriteIds => _favoriteIds;
@@ -41,6 +58,7 @@ class SettingsProvider extends ChangeNotifier {
   SettingsProvider() {
     _activeUserId = _supabase.auth.currentUser?.id;
     _loadSettings();
+    appBrandingReady = _loadAppBranding();
     _loadFavorites(_activeUserId);
     _authSubscription = _supabase.auth.onAuthStateChange.listen((data) {
       final userId = data.session?.user.id;
@@ -66,6 +84,8 @@ class SettingsProvider extends ChangeNotifier {
     final lang = prefs.getString('language') ?? 'ar';
     _textScale = (prefs.getDouble('text_scale') ?? 1.0).clamp(0.85, 1.3);
     _reduceMotion = prefs.getBool('reduce_motion') ?? false;
+    _notificationAlarmSoundEnabled =
+        prefs.getBool('notification_alarm_sound') ?? true;
     _archiveIngestionDelaySeconds =
         prefs.getInt('archive_ingestion_delay_seconds') ?? 120;
     _hideProcessingFromPublic =
@@ -77,7 +97,105 @@ class SettingsProvider extends ChangeNotifier {
     _locale = AppLocales.codes.contains(lang)
         ? Locale(lang)
         : const Locale('ar');
+    _applyWebBranding();
     notifyListeners();
+  }
+
+  Future<void> _loadAppBranding() async {
+    try {
+      final row = await _supabase
+          .from('app_branding')
+          .select('app_name_ar, app_name_en, logo_url')
+          .eq('id', 1)
+          .maybeSingle();
+      if (row != null) {
+        _appNameAr = _validatedBrandName(
+          row['app_name_ar']?.toString(),
+          'الأثير للنشر والتوزيع',
+        );
+        _appNameEn = _validatedBrandName(
+          row['app_name_en']?.toString(),
+          'Al-Atheer Islamic Library & Digital Media',
+        );
+        _appLogoUrl = row['logo_url']?.toString();
+      }
+      _appBrandingError = null;
+    } catch (error, stackTrace) {
+      _appBrandingError =
+          'Could not load app branding. Run supabase/app_branding_setup.sql. '
+          '($error)';
+      debugPrint(_appBrandingError);
+      debugPrintStack(stackTrace: stackTrace);
+    }
+    _applyWebBranding();
+    notifyListeners();
+  }
+
+  String _validatedBrandName(String? value, String fallback) {
+    final name = value?.trim();
+    return name == null || name.isEmpty ? fallback : name;
+  }
+
+  Future<String> uploadAppLogo(Uint8List bytes, String fileName) async {
+    if (bytes.isEmpty || bytes.length > _maxAppLogoBytes) {
+      throw ArgumentError('The app logo must be between 1 byte and 5 MB.');
+    }
+
+    final extension = fileName.split('.').last.toLowerCase();
+    final contentType = switch (extension) {
+      'png' => 'image/png',
+      'jpg' || 'jpeg' => 'image/jpeg',
+      'webp' => 'image/webp',
+      _ => throw ArgumentError('Choose a PNG, JPEG, or WebP image.'),
+    };
+    final path =
+        'logo_${DateTime.now().toUtc().microsecondsSinceEpoch}.$extension';
+    await _supabase.storage
+        .from(_appBrandingBucket)
+        .uploadBinary(
+          path,
+          bytes,
+          fileOptions: FileOptions(
+            cacheControl: '3600',
+            contentType: contentType,
+          ),
+        );
+    return _supabase.storage.from(_appBrandingBucket).getPublicUrl(path);
+  }
+
+  Future<void> saveAppBranding({
+    required String appNameAr,
+    required String appNameEn,
+    String? logoUrl,
+  }) async {
+    final arabicName = appNameAr.trim();
+    final englishName = appNameEn.trim();
+    if (arabicName.isEmpty || englishName.isEmpty) {
+      throw ArgumentError('Enter an app name in both languages.');
+    }
+    if (arabicName.length > 60 || englishName.length > 60) {
+      throw ArgumentError('App names must be 60 characters or fewer.');
+    }
+
+    await _supabase.from('app_branding').upsert({
+      'id': 1,
+      'app_name_ar': arabicName,
+      'app_name_en': englishName,
+      'logo_url': logoUrl,
+      'updated_by': _supabase.auth.currentUser?.id,
+      'updated_at': DateTime.now().toUtc().toIso8601String(),
+    });
+
+    _appNameAr = arabicName;
+    _appNameEn = englishName;
+    _appLogoUrl = logoUrl;
+    _appBrandingError = null;
+    _applyWebBranding();
+    notifyListeners();
+  }
+
+  void _applyWebBranding() {
+    WebBrandingClient.apply(appName, _appLogoUrl);
   }
 
   String _favoriteStorageKey(String? userId) => userId == null
@@ -310,6 +428,7 @@ class SettingsProvider extends ChangeNotifier {
   Future<void> setLanguage(String languageCode) async {
     if (!AppLocales.codes.contains(languageCode)) return;
     _locale = Locale(languageCode);
+    _applyWebBranding();
     notifyListeners();
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('language', languageCode);
@@ -327,6 +446,13 @@ class SettingsProvider extends ChangeNotifier {
     notifyListeners();
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool('reduce_motion', reduce);
+  }
+
+  Future<void> setNotificationAlarmSoundEnabled(bool enabled) async {
+    _notificationAlarmSoundEnabled = enabled;
+    notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('notification_alarm_sound', enabled);
   }
 
   Future<void> setArchiveIngestionDelay(int seconds) async {
