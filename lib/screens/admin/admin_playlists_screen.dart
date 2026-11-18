@@ -18,6 +18,7 @@ class _AdminPlaylistsScreenState extends State<AdminPlaylistsScreen> {
   final SupabaseClient _supabase = Supabase.instance.client;
   List<ResourceModel> _resources = [];
   bool _isLoadingResources = true;
+  bool _isReorderingPlaylists = false;
   String? _resourceError;
 
   @override
@@ -117,15 +118,21 @@ class _AdminPlaylistsScreenState extends State<AdminPlaylistsScreen> {
     }
   }
 
-  Future<void> _movePlaylist(int index, int offset) async {
+  Future<void> _reorderPlaylists(int oldIndex, int newIndex) async {
+    setState(() => _isReorderingPlaylists = true);
     try {
-      await context.read<ResourceProvider>().movePlaylist(index, offset);
+      await context.read<ResourceProvider>().reorderPlaylists(
+        oldIndex,
+        newIndex,
+      );
     } catch (error) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('تعذر تغيير ترتيب القائمة: $error')),
         );
       }
+    } finally {
+      if (mounted) setState(() => _isReorderingPlaylists = false);
     }
   }
 
@@ -165,65 +172,70 @@ class _AdminPlaylistsScreenState extends State<AdminPlaylistsScreen> {
           : Center(
               child: ConstrainedBox(
                 constraints: const BoxConstraints(maxWidth: 900),
-                child: ListView.builder(
-                  padding: const EdgeInsets.fromLTRB(12, 12, 12, 88),
-                  itemCount: provider.playlists.length,
-                  itemBuilder: (context, index) {
-                    final playlist = provider.playlists[index];
-                    final types = playlist.resources
-                        .map((resource) => resource.typeLabel)
-                        .toSet()
-                        .join('، ');
-                    return Card(
-                      child: ListTile(
-                        leading: CoverImage(
-                          imageUrl: playlist.coverImageUrl,
-                          width: 58,
-                          height: 58,
-                          fallbackIcon: Icons.queue_music_rounded,
-                        ),
-                        title: Text(playlist.title),
-                        subtitle: Text(
-                          '${playlist.resources.length} مادة${types.isEmpty ? '' : ' • $types'}',
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        trailing: Wrap(
-                          spacing: 0,
-                          children: [
-                            IconButton(
-                              tooltip: 'تحريك القائمة للأعلى',
-                              onPressed: index == 0
-                                  ? null
-                                  : () => _movePlaylist(index, -1),
-                              icon: const Icon(Icons.arrow_upward),
-                            ),
-                            IconButton(
-                              tooltip: 'تحريك القائمة للأسفل',
-                              onPressed: index == provider.playlists.length - 1
-                                  ? null
-                                  : () => _movePlaylist(index, 1),
-                              icon: const Icon(Icons.arrow_downward),
-                            ),
-                            IconButton(
-                              tooltip: 'تعديل المواد',
-                              onPressed: () =>
-                                  _editPlaylist(playlist: playlist),
-                              icon: const Icon(Icons.edit_outlined),
-                            ),
-                            IconButton(
-                              tooltip: 'حذف القائمة',
-                              onPressed: () => _deletePlaylist(playlist),
-                              icon: const Icon(
-                                Icons.delete_outline,
-                                color: Colors.red,
+                child: AbsorbPointer(
+                  absorbing: _isReorderingPlaylists,
+                  child: ReorderableListView.builder(
+                    padding: const EdgeInsets.fromLTRB(12, 12, 12, 88),
+                    buildDefaultDragHandles: false,
+                    onReorder: _reorderPlaylists,
+                    itemCount: provider.playlists.length,
+                    itemBuilder: (context, index) {
+                      final playlist = provider.playlists[index];
+                      final types = playlist.resources
+                          .map((resource) => resource.typeLabel)
+                          .toSet()
+                          .join('، ');
+                      return Card(
+                        key: ValueKey(playlist.id),
+                        child: ListTile(
+                          leading: CoverImage(
+                            imageUrl: playlist.coverImageUrl,
+                            width: 58,
+                            height: 58,
+                            fallbackIcon: Icons.queue_music_rounded,
+                          ),
+                          title: Text(playlist.title),
+                          subtitle: Text(
+                            '${playlist.resources.length} مادة${types.isEmpty ? '' : ' • $types'}',
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          trailing: Wrap(
+                            spacing: 0,
+                            children: [
+                              Tooltip(
+                                message: 'اسحب لتغيير الترتيب',
+                                child: ReorderableDragStartListener(
+                                  index: index,
+                                  child: const Padding(
+                                    padding: EdgeInsets.all(12),
+                                    child: Icon(
+                                      Icons.drag_handle,
+                                      color: Colors.grey,
+                                    ),
+                                  ),
+                                ),
                               ),
-                            ),
-                          ],
+                              IconButton(
+                                tooltip: 'تعديل المواد',
+                                onPressed: () =>
+                                    _editPlaylist(playlist: playlist),
+                                icon: const Icon(Icons.edit_outlined),
+                              ),
+                              IconButton(
+                                tooltip: 'حذف القائمة',
+                                onPressed: () => _deletePlaylist(playlist),
+                                icon: const Icon(
+                                  Icons.delete_outline,
+                                  color: Colors.red,
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
-                      ),
-                    );
-                  },
+                      );
+                    },
+                  ),
                 ),
               ),
             ),
@@ -305,6 +317,14 @@ class _PlaylistEditorDialogState extends State<_PlaylistEditorDialog> {
     _titleController.dispose();
     _descriptionController.dispose();
     super.dispose();
+  }
+
+  void _reorderSelectedResource(int oldIndex, int newIndex) {
+    if (newIndex > oldIndex) newIndex--;
+    setState(() {
+      final selected = _selectedResourceIds.removeAt(oldIndex);
+      _selectedResourceIds.insert(newIndex, selected);
+    });
   }
 
   Future<void> _save() async {
@@ -395,7 +415,9 @@ class _PlaylistEditorDialogState extends State<_PlaylistEditorDialog> {
                 height: (_selectedResourceIds.length * 52.0)
                     .clamp(0.0, 130.0)
                     .toDouble(),
-                child: ListView.builder(
+                child: ReorderableListView.builder(
+                  buildDefaultDragHandles: false,
+                  onReorder: _reorderSelectedResource,
                   itemCount: _selectedResourceIds.length,
                   itemBuilder: (context, index) {
                     final id = _selectedResourceIds[index];
@@ -403,45 +425,22 @@ class _PlaylistEditorDialogState extends State<_PlaylistEditorDialog> {
                       (item) => item.id == id,
                     );
                     return ListTile(
+                      key: ValueKey(id),
                       dense: true,
+                      leading: Tooltip(
+                        message: 'اسحب لتغيير الترتيب',
+                        child: ReorderableDragStartListener(
+                          index: index,
+                          child: const Icon(
+                            Icons.drag_handle,
+                            color: Colors.grey,
+                          ),
+                        ),
+                      ),
                       title: Text(
                         resource.title,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                      ),
-                      trailing: Wrap(
-                        children: [
-                          IconButton(
-                            tooltip: 'تحريك المادة للأعلى',
-                            visualDensity: VisualDensity.compact,
-                            onPressed: index == 0
-                                ? null
-                                : () => setState(() {
-                                    final selected = _selectedResourceIds
-                                        .removeAt(index);
-                                    _selectedResourceIds.insert(
-                                      index - 1,
-                                      selected,
-                                    );
-                                  }),
-                            icon: const Icon(Icons.arrow_upward, size: 18),
-                          ),
-                          IconButton(
-                            tooltip: 'تحريك المادة للأسفل',
-                            visualDensity: VisualDensity.compact,
-                            onPressed: index == _selectedResourceIds.length - 1
-                                ? null
-                                : () => setState(() {
-                                    final selected = _selectedResourceIds
-                                        .removeAt(index);
-                                    _selectedResourceIds.insert(
-                                      index + 1,
-                                      selected,
-                                    );
-                                  }),
-                            icon: const Icon(Icons.arrow_downward, size: 18),
-                          ),
-                        ],
                       ),
                     );
                   },

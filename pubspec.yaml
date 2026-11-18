@@ -1,7 +1,7 @@
 name: al_atheer
 description: "A production cross-platform app for an Islamic Publisher powered by Supabase & Internet Archive."
 publish_to: 'none'
-version: 0.3.0
+version: 0.4.0
 
 environment:
   sdk: ^3.10.1

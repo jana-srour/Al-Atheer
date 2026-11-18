@@ -163,8 +163,10 @@ class _HomeScreenState extends State<HomeScreen>
                 onOpenAdmin: () async {
                   await Navigator.pushNamed(context, '/admin');
                   if (context.mounted) {
-                    resourceProv.fetchCategories();
-                    resourceProv.fetchResources();
+                    await Future.wait([
+                      resourceProv.fetchCategories(),
+                      resourceProv.fetchResources(),
+                    ]);
                   }
                 },
                 onOpenSettings: () => Navigator.pushNamed(context, '/settings'),

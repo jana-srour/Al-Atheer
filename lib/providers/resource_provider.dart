@@ -141,54 +141,50 @@ class ResourceProvider extends ChangeNotifier {
     }
   }
 
-  Future<void> moveCategory(int index, int offset) async {
+  Future<void> reorderCategories(int oldIndex, int newIndex) async {
     final categories = List<String>.of(_categories);
-    final destination = index + offset;
-    if (index < 0 ||
-        index >= categories.length ||
-        destination < 0 ||
-        destination >= categories.length) {
+    if (newIndex > oldIndex) newIndex--;
+    if (oldIndex < 0 ||
+        oldIndex >= categories.length ||
+        newIndex < 0 ||
+        newIndex >= categories.length ||
+        oldIndex == newIndex) {
       return;
     }
 
-    final category = categories.removeAt(index);
-    categories.insert(destination, category);
+    final category = categories.removeAt(oldIndex);
+    categories.insert(newIndex, category);
+    _categories = categories;
+    notifyListeners();
     try {
-      for (var order = 0; order < categories.length; order++) {
-        await _supabase
-            .from('categories')
-            .update({'sort_order': order})
-            .eq('name', categories[order]);
-      }
-      _categories = categories;
-      notifyListeners();
+      await _persistSortOrder('categories', 'name', categories);
     } catch (error) {
       await fetchCategories();
       rethrow;
     }
   }
 
-  Future<void> movePlaylist(int index, int offset) async {
-    final destination = index + offset;
-    if (index < 0 ||
-        index >= _playlists.length ||
-        destination < 0 ||
-        destination >= _playlists.length) {
+  Future<void> reorderPlaylists(int oldIndex, int newIndex) async {
+    final playlists = List<PlaylistModel>.of(_playlists);
+    if (newIndex > oldIndex) newIndex--;
+    if (oldIndex < 0 ||
+        oldIndex >= playlists.length ||
+        newIndex < 0 ||
+        newIndex >= playlists.length ||
+        oldIndex == newIndex) {
       return;
     }
 
-    final playlists = List<PlaylistModel>.of(_playlists);
-    final playlist = playlists.removeAt(index);
-    playlists.insert(destination, playlist);
+    final playlist = playlists.removeAt(oldIndex);
+    playlists.insert(newIndex, playlist);
+    _playlists = playlists;
+    notifyListeners();
     try {
-      for (var order = 0; order < playlists.length; order++) {
-        await _supabase
-            .from('playlists')
-            .update({'sort_order': order})
-            .eq('id', playlists[order].id);
-      }
-      _playlists = playlists;
-      notifyListeners();
+      await _persistSortOrder(
+        'playlists',
+        'id',
+        playlists.map((playlist) => playlist.id).toList(),
+      );
     } catch (error) {
       await fetchPlaylists();
       rethrow;
@@ -197,16 +193,31 @@ class ResourceProvider extends ChangeNotifier {
 
   Future<void> reorderResources(List<int> resourceIds) async {
     try {
-      for (var order = 0; order < resourceIds.length; order++) {
-        await _supabase
-            .from('resources')
-            .update({'sort_order': order})
-            .eq('id', resourceIds[order]);
-      }
+      await _persistSortOrder('resources', 'id', resourceIds);
       await fetchResources();
     } catch (error) {
       await fetchResources();
       rethrow;
+    }
+  }
+
+  Future<void> _persistSortOrder(
+    String table,
+    String idColumn,
+    List<Object> ids,
+  ) async {
+    const batchSize = 20;
+    for (var start = 0; start < ids.length; start += batchSize) {
+      final end = start + batchSize < ids.length
+          ? start + batchSize
+          : ids.length;
+      await Future.wait([
+        for (var index = start; index < end; index++)
+          _supabase
+              .from(table)
+              .update({'sort_order': index})
+              .eq(idColumn, ids[index]),
+      ]);
     }
   }
 

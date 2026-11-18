@@ -30,6 +30,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
   List<ResourceModel> _resources = [];
   List<String> _categories = [];
   bool _isLoading = true;
+  bool _isReorderingResources = false;
   bool _hasArchiveKeys = false;
   String _searchFilter = '';
   String _typeFilter = 'all';
@@ -191,10 +192,17 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
       context: context,
       builder: (_) => CategoryManagerDialog(
         categories: _categories,
-        onReorder: (index, offset) => Provider.of<ResourceProvider>(
+        onReorder: (oldIndex, newIndex) => Provider.of<ResourceProvider>(
           context,
           listen: false,
-        ).moveCategory(index, offset),
+        ).reorderCategories(oldIndex, newIndex),
+        onOrderChanged: () {
+          final categories = Provider.of<ResourceProvider>(
+            context,
+            listen: false,
+          ).categories;
+          setState(() => _categories = List.of(categories));
+        },
         onChanged: () {
           _fetchData();
         },
@@ -202,22 +210,29 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
     );
   }
 
-  Future<void> _moveResource(int index, int offset) async {
-    final destination = index + offset;
-    if (destination < 0 || destination >= _resources.length) return;
+  Future<void> _reorderResource(int oldIndex, int newIndex) async {
+    if (newIndex > oldIndex) newIndex--;
+    if (oldIndex < 0 ||
+        oldIndex >= _resources.length ||
+        newIndex < 0 ||
+        newIndex >= _resources.length ||
+        oldIndex == newIndex) {
+      return;
+    }
+
     final reordered = List<ResourceModel>.of(_resources);
-    final resource = reordered.removeAt(index);
-    reordered.insert(destination, resource);
-    setState(() => _resources = reordered);
+    final resource = reordered.removeAt(oldIndex);
+    reordered.insert(newIndex, resource);
+    setState(() {
+      _resources = reordered;
+      _isReorderingResources = true;
+    });
 
     try {
       await Provider.of<ResourceProvider>(
         context,
         listen: false,
       ).reorderResources(reordered.map((item) => item.id).toList());
-      if (mounted) {
-        await _fetchData();
-      }
     } catch (error) {
       if (mounted) {
         await _fetchData();
@@ -226,6 +241,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
           SnackBar(content: Text('تعذر تغيير ترتيب المادة: $error')),
         );
       }
+    } finally {
+      if (mounted) setState(() => _isReorderingResources = false);
     }
   }
 
@@ -724,6 +741,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
               const Divider(height: 1),
 
               // Inventory List
+              if (_isReorderingResources)
+                const LinearProgressIndicator(minHeight: 2),
               Expanded(
                 child: _isLoading
                     ? const Center(
@@ -750,24 +769,46 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
                           ],
                         ),
                       )
-                    : ListView.builder(
-                        padding: const EdgeInsets.all(12),
-                        itemCount: filteredResources.length,
-                        itemBuilder: (ctx, index) {
-                          final item = filteredResources[index];
+                    : Builder(
+                        builder: (context) {
                           final canReorder =
                               _searchFilter.trim().isEmpty &&
                               _typeFilter == 'all';
-                          return _buildResourceCard(
-                            item,
-                            isDark,
-                            index: index,
-                            canReorder: canReorder,
-                            delaySeconds: delaySeconds,
-                            isReady: resProv.isResourceReady(
+                          Widget buildItem(BuildContext context, int index) {
+                            final item = filteredResources[index];
+                            return _buildResourceCard(
                               item,
+                              isDark,
+                              index: index,
+                              canReorder: canReorder,
                               delaySeconds: delaySeconds,
-                            ),
+                              isReady: resProv.isResourceReady(
+                                item,
+                                delaySeconds: delaySeconds,
+                              ),
+                            );
+                          }
+
+                          if (canReorder) {
+                            return AbsorbPointer(
+                              absorbing: _isReorderingResources,
+                              child: ReorderableListView.builder(
+                                padding: const EdgeInsets.all(12),
+                                buildDefaultDragHandles: false,
+                                itemCount: filteredResources.length,
+                                onReorder: _reorderResource,
+                                itemBuilder: (context, index) => KeyedSubtree(
+                                  key: ValueKey(filteredResources[index].id),
+                                  child: buildItem(context, index),
+                                ),
+                              ),
+                            );
+                          }
+
+                          return ListView.builder(
+                            padding: const EdgeInsets.all(12),
+                            itemCount: filteredResources.length,
+                            itemBuilder: buildItem,
                           );
                         },
                       ),
@@ -992,17 +1033,34 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
       ),
       child: ListTile(
         contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-        leading: res.coverUrl != null
-            ? CoverImage(
+        leading: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (canReorder)
+              Tooltip(
+                message: 'اسحب لتغيير الترتيب',
+                child: ReorderableDragStartListener(
+                  index: index,
+                  child: const Padding(
+                    padding: EdgeInsetsDirectional.only(end: 6),
+                    child: Icon(Icons.drag_handle, color: Colors.grey),
+                  ),
+                ),
+              ),
+            if (res.coverUrl != null)
+              CoverImage(
                 imageUrl: res.coverUrl,
                 width: 52,
                 height: 52,
                 fallbackIcon: typeIcon,
               )
-            : CircleAvatar(
+            else
+              CircleAvatar(
                 backgroundColor: deepEmerald,
                 child: Icon(typeIcon, color: iconColor, size: 20),
               ),
+          ],
+        ),
         title: Text(
           res.title,
           style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
@@ -1075,28 +1133,6 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
                 ],
               ],
             ),
-            if (canReorder)
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  IconButton(
-                    tooltip: 'تحريك المادة للأعلى',
-                    visualDensity: VisualDensity.compact,
-                    onPressed: index == 0
-                        ? null
-                        : () => _moveResource(index, -1),
-                    icon: const Icon(Icons.arrow_upward, size: 18),
-                  ),
-                  IconButton(
-                    tooltip: 'تحريك المادة للأسفل',
-                    visualDensity: VisualDensity.compact,
-                    onPressed: index == _resources.length - 1
-                        ? null
-                        : () => _moveResource(index, 1),
-                    icon: const Icon(Icons.arrow_downward, size: 18),
-                  ),
-                ],
-              ),
           ],
         ),
         trailing: isCompact
@@ -1574,12 +1610,14 @@ class _AttachmentEditorDialogState extends State<_AttachmentEditorDialog> {
 class CategoryManagerDialog extends StatefulWidget {
   final List<String> categories;
   final VoidCallback onChanged;
-  final Future<void> Function(int index, int offset) onReorder;
+  final VoidCallback onOrderChanged;
+  final Future<void> Function(int oldIndex, int newIndex) onReorder;
 
   const CategoryManagerDialog({
     super.key,
     required this.categories,
     required this.onChanged,
+    required this.onOrderChanged,
     required this.onReorder,
   });
 
@@ -1589,8 +1627,8 @@ class CategoryManagerDialog extends StatefulWidget {
 
 class _CategoryManagerDialogState extends State<CategoryManagerDialog> {
   final TextEditingController _catController = TextEditingController();
-  final Set<int> _movingCategories = {};
   late List<String> _categories;
+  bool _isSavingOrder = false;
 
   @override
   void initState() {
@@ -1598,22 +1636,26 @@ class _CategoryManagerDialogState extends State<CategoryManagerDialog> {
     _categories = List.of(widget.categories);
   }
 
-  Future<void> _moveCategory(int index, int offset) async {
-    if (!_movingCategories.add(index)) return;
+  Future<void> _moveCategory(int oldIndex, int newIndex) async {
+    final previousOrder = List<String>.of(_categories);
+    final destination = newIndex > oldIndex ? newIndex - 1 : newIndex;
+    if (oldIndex == destination) return;
+
+    final category = _categories.removeAt(oldIndex);
+    _categories.insert(destination, category);
+    setState(() => _isSavingOrder = true);
     try {
-      await widget.onReorder(index, offset);
-      final category = _categories.removeAt(index);
-      _categories.insert(index + offset, category);
-      if (mounted) setState(() {});
-      widget.onChanged();
+      await widget.onReorder(oldIndex, newIndex);
+      widget.onOrderChanged();
     } catch (error) {
       if (mounted) {
+        setState(() => _categories = previousOrder);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('تعذر تغيير ترتيب التصنيف: $error')),
         );
       }
     } finally {
-      _movingCategories.remove(index);
+      if (mounted) setState(() => _isSavingOrder = false);
     }
   }
 
@@ -1741,54 +1783,57 @@ class _CategoryManagerDialogState extends State<CategoryManagerDialog> {
               ),
             ),
             const SizedBox(height: 8),
+            if (_isSavingOrder) const LinearProgressIndicator(),
             ConstrainedBox(
               constraints: const BoxConstraints(maxHeight: 200),
-              child: ListView.builder(
-                shrinkWrap: true,
-                itemCount: _categories.length,
-                itemBuilder: (context, index) {
-                  final cat = _categories[index];
-                  return ListTile(
-                    dense: true,
-                    title: Text(
-                      cat,
-                      style: const TextStyle(fontWeight: FontWeight.w500),
-                    ),
-                    trailing: Wrap(
-                      spacing: 0,
-                      children: [
-                        IconButton(
-                          tooltip: 'تحريك التصنيف للأعلى',
-                          icon: const Icon(Icons.arrow_upward, size: 18),
-                          onPressed: index == 0
-                              ? null
-                              : () => _moveCategory(index, -1),
-                        ),
-                        IconButton(
-                          tooltip: 'تحريك التصنيف للأسفل',
-                          icon: const Icon(Icons.arrow_downward, size: 18),
-                          onPressed: index == _categories.length - 1
-                              ? null
-                              : () => _moveCategory(index, 1),
-                        ),
-                        IconButton(
-                          tooltip: 'تعديل اسم التصنيف',
-                          icon: const Icon(Icons.edit_outlined, size: 20),
-                          onPressed: () => _renameCategory(cat),
-                        ),
-                        IconButton(
-                          tooltip: 'حذف التصنيف',
-                          icon: const Icon(
-                            Icons.delete_outline,
-                            color: Colors.redAccent,
-                            size: 20,
+              child: AbsorbPointer(
+                absorbing: _isSavingOrder,
+                child: ReorderableListView.builder(
+                  shrinkWrap: true,
+                  buildDefaultDragHandles: false,
+                  onReorder: _moveCategory,
+                  itemCount: _categories.length,
+                  itemBuilder: (context, index) {
+                    final cat = _categories[index];
+                    return ListTile(
+                      key: ValueKey(cat),
+                      dense: true,
+                      leading: Tooltip(
+                        message: 'اسحب لتغيير الترتيب',
+                        child: ReorderableDragStartListener(
+                          index: index,
+                          child: const Icon(
+                            Icons.drag_handle,
+                            color: Colors.grey,
                           ),
-                          onPressed: () => _deleteCategory(cat),
                         ),
-                      ],
-                    ),
-                  );
-                },
+                      ),
+                      title: Text(
+                        cat,
+                        style: const TextStyle(fontWeight: FontWeight.w500),
+                      ),
+                      trailing: Wrap(
+                        spacing: 0,
+                        children: [
+                          IconButton(
+                            tooltip: 'تعديل اسم التصنيف',
+                            icon: const Icon(Icons.edit_outlined, size: 20),
+                            onPressed: () => _renameCategory(cat),
+                          ),
+                          IconButton(
+                            tooltip: 'حذف التصنيف',
+                            icon: const Icon(
+                              Icons.delete_outline,
+                              color: Colors.redAccent,
+                              size: 20,
+                            ),
+                            onPressed: () => _deleteCategory(cat),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                ),
               ),
             ),
           ],
