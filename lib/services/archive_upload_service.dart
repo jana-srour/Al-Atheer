@@ -210,6 +210,15 @@ class ArchiveUploadService {
           'mime': 'video/webm',
           'appType': 'video',
         };
+      case 'jpg':
+      case 'jpeg':
+        return {'mediatype': 'image', 'mime': 'image/jpeg', 'appType': 'image'};
+      case 'png':
+        return {'mediatype': 'image', 'mime': 'image/png', 'appType': 'image'};
+      case 'gif':
+        return {'mediatype': 'image', 'mime': 'image/gif', 'appType': 'image'};
+      case 'webp':
+        return {'mediatype': 'image', 'mime': 'image/webp', 'appType': 'image'};
       default:
         return {
           'mediatype': 'data',
@@ -291,7 +300,7 @@ class ArchiveUploadService {
       final ext = file.extension ?? 'bin';
       final mediaInfo = getMediaTypeInfo(ext);
       final cleanFileName = sanitizeFileName(file.name);
-      final timestamp = DateTime.now().millisecondsSinceEpoch;
+      final timestamp = DateTime.now().microsecondsSinceEpoch;
       final identifier = 'alatheer_${mediaInfo['appType']}_$timestamp';
 
       // Archive.org S3 Endpoint

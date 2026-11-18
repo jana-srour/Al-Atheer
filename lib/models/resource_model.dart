@@ -1,10 +1,37 @@
+class ResourceAttachment {
+  final String type;
+  final String url;
+  final String fileName;
+
+  const ResourceAttachment({
+    required this.type,
+    required this.url,
+    required this.fileName,
+  });
+
+  factory ResourceAttachment.fromJson(Map<String, dynamic> json) {
+    return ResourceAttachment(
+      type: json['type']?.toString() ?? 'file',
+      url: json['url']?.toString() ?? '',
+      fileName: json['file_name']?.toString() ?? '',
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+    'type': type,
+    'url': url,
+    'file_name': fileName,
+  };
+}
+
 class ResourceModel {
   final int id;
   final String title;
   final String? description;
-  final String type; // 'audio', 'video', 'pdf', 'text'
+  final String type; // 'audio', 'video', 'pdf', 'image', 'text', or 'post'
   final String? archiveUrl;
   final String? textContent;
+  final List<ResourceAttachment> attachments;
   final String category;
   final DateTime createdAt;
 
@@ -15,6 +42,7 @@ class ResourceModel {
     required this.type,
     this.archiveUrl,
     this.textContent,
+    this.attachments = const [],
     required this.category,
     required this.createdAt,
   });
@@ -29,6 +57,19 @@ class ResourceModel {
       parsedDate = DateTime.now();
     }
 
+    final rawAttachments = json['attachments'];
+    final attachments = rawAttachments is List
+        ? rawAttachments
+              .whereType<Map>()
+              .map(
+                (item) => ResourceAttachment.fromJson(
+                  Map<String, dynamic>.from(item),
+                ),
+              )
+              .where((item) => item.url.isNotEmpty)
+              .toList()
+        : const <ResourceAttachment>[];
+
     return ResourceModel(
       id: json['id'] is int ? json['id'] : int.parse(json['id'].toString()),
       title: json['title'] ?? '',
@@ -36,6 +77,7 @@ class ResourceModel {
       type: json['type'] ?? 'text',
       archiveUrl: json['archive_url'],
       textContent: json['text_content'],
+      attachments: attachments,
       category: json['category'] ?? 'General',
       createdAt: parsedDate,
     );
@@ -51,6 +93,9 @@ class ResourceModel {
       'type': type,
       'archive_url': archiveUrl,
       'text_content': textContent,
+      'attachments': attachments
+          .map((attachment) => attachment.toJson())
+          .toList(),
       'category': category,
     };
   }
@@ -104,6 +149,10 @@ class ResourceModel {
         return 'تسجيل صوتي';
       case 'video':
         return 'مرئي / درس مصور';
+      case 'image':
+        return 'صورة';
+      case 'post':
+        return 'منشور';
       case 'text':
       default:
         return 'اقتباس وفائدة علمية';

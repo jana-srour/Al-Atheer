@@ -24,14 +24,17 @@ class _AdminUploadWidgetState extends State<AdminUploadWidget> {
   final _descController = TextEditingController();
   final _textContentController = TextEditingController();
 
-  PlatformFile? _selectedFile;
-  String _resourceType = 'pdf'; // 'pdf', 'audio', 'video', 'text'
+  List<PlatformFile> _selectedFiles = [];
+  String _resourceType = 'pdf';
   String _selectedCategory = 'Fiqh';
 
   bool _isUploading = false;
   double _uploadProgress = 0.0;
   String _uploadStatus = '';
   bool _hasArchiveKeys = false;
+  bool get _requiresArchiveKeys =>
+      _resourceType != 'text' &&
+      (_resourceType != 'post' || _selectedFiles.isNotEmpty);
 
   // Active Ingestion Tracker State for newly uploaded item
   ResourceModel? _lastUploadedResource;
@@ -120,26 +123,45 @@ class _AdminUploadWidgetState extends State<AdminUploadWidget> {
   }
 
   Future<void> _pickFile() async {
-    List<String> extensions = [];
-    if (_resourceType == 'pdf') {
-      extensions = ['pdf'];
-    } else if (_resourceType == 'audio') {
-      extensions = ['mp3', 'm4a', 'wav', 'aac', 'ogg'];
-    } else if (_resourceType == 'video') {
-      extensions = ['mp4', 'mov', 'mkv', 'webm'];
-    }
+    final extensions = switch (_resourceType) {
+      'pdf' => ['pdf'],
+      'audio' => ['mp3', 'm4a', 'wav', 'aac', 'ogg'],
+      'video' => ['mp4', 'mov', 'mkv', 'webm'],
+      'image' => ['jpg', 'jpeg', 'png', 'gif', 'webp'],
+      'post' => [
+        'pdf',
+        'mp3',
+        'm4a',
+        'wav',
+        'aac',
+        'ogg',
+        'mp4',
+        'mov',
+        'mkv',
+        'webm',
+        'jpg',
+        'jpeg',
+        'png',
+        'gif',
+        'webp',
+      ],
+      _ => <String>[],
+    };
 
     final result = await FilePicker.platform.pickFiles(
       type: FileType.custom,
       allowedExtensions: extensions,
+      allowMultiple: _resourceType == 'post',
       withData: true,
     );
 
     if (result != null && result.files.isNotEmpty) {
       setState(() {
-        _selectedFile = result.files.first;
+        _selectedFiles = _resourceType == 'post'
+            ? [..._selectedFiles, ...result.files]
+            : result.files;
         if (_titleController.text.trim().isEmpty) {
-          final rawName = _selectedFile!.name;
+          final rawName = result.files.first.name;
           final lastDot = rawName.lastIndexOf('.');
           final nameWithoutExt = lastDot != -1
               ? rawName.substring(0, lastDot)
@@ -274,7 +296,9 @@ class _AdminUploadWidgetState extends State<AdminUploadWidget> {
                 } catch (error) {
                   if (ctx.mounted) {
                     ScaffoldMessenger.of(ctx).showSnackBar(
-                      SnackBar(content: Text('Could not save credentials: $error')),
+                      SnackBar(
+                        content: Text('Could not save credentials: $error'),
+                      ),
                     );
                   }
                 }
@@ -334,7 +358,11 @@ class _AdminUploadWidgetState extends State<AdminUploadWidget> {
   Future<void> _handlePublish() async {
     if (!_formKey.currentState!.validate()) return;
 
-    if (_resourceType != 'text' && _selectedFile == null) {
+    final textContent = _textContentController.text.trim();
+    final hasArchiveFiles = _selectedFiles.isNotEmpty;
+    if (_resourceType != 'text' &&
+        _resourceType != 'post' &&
+        _selectedFiles.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Please select a file to upload.'),
@@ -344,7 +372,19 @@ class _AdminUploadWidgetState extends State<AdminUploadWidget> {
       return;
     }
 
-    if (_resourceType != 'text' && !_hasArchiveKeys) {
+    if (_resourceType == 'post' &&
+        _selectedFiles.isEmpty &&
+        textContent.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('أضف نصاً أو ملفاً واحداً على الأقل للمنشور.'),
+          backgroundColor: Colors.redAccent,
+        ),
+      );
+      return;
+    }
+
+    if (_requiresArchiveKeys && !_hasArchiveKeys) {
       _showCredentialsDialog();
       return;
     }
@@ -361,32 +401,46 @@ class _AdminUploadWidgetState extends State<AdminUploadWidget> {
 
     try {
       String? archiveDirectUrl;
+      final uploadedAttachments = <Map<String, dynamic>>[];
 
-      // 1. If media, upload to Archive.org
-      if (_resourceType != 'text') {
-        setState(() => _uploadStatus = 'Connecting to Archive.org S3...');
+      for (var index = 0; index < _selectedFiles.length; index++) {
+        final file = _selectedFiles[index];
+        setState(() {
+          _uploadStatus =
+              'Uploading ${index + 1}/${_selectedFiles.length} to Archive.org...';
+        });
 
         final uploadResult = await ArchiveUploadService.uploadFile(
-          file: _selectedFile!,
+          file: file,
           title: _titleController.text.trim(),
           description: _descController.text.trim(),
           category: _selectedCategory,
           onProgress: (progress, sent, total) {
-            if (mounted) {
-              setState(() {
-                _uploadProgress = progress;
-                _uploadStatus =
-                    'Uploading to Archive.org (${(progress * 100).toInt()}% • ${_formatFileSize(sent)} / ${_formatFileSize(total)})';
-              });
-            }
+            if (!mounted) return;
+            final overallProgress = (index + progress) / _selectedFiles.length;
+            setState(() {
+              _uploadProgress = overallProgress * 0.9;
+              _uploadStatus =
+                  'Uploading ${index + 1}/${_selectedFiles.length} (${(progress * 100).toInt()}% • ${_formatFileSize(sent)} / ${_formatFileSize(total)})';
+            });
           },
         );
 
         if (!uploadResult.isSuccess || uploadResult.directUrl == null) {
-          throw Exception(uploadResult.errorMessage ?? 'Upload failed');
+          throw Exception(
+            'Could not upload ${file.name}: ${uploadResult.errorMessage ?? 'Upload failed'}',
+          );
         }
 
-        archiveDirectUrl = uploadResult.directUrl;
+        final mediaInfo = ArchiveUploadService.getMediaTypeInfo(
+          file.extension ?? '',
+        );
+        uploadedAttachments.add({
+          'type': mediaInfo['appType'],
+          'url': uploadResult.directUrl,
+          'file_name': file.name,
+        });
+        archiveDirectUrl ??= uploadResult.directUrl;
       }
 
       // 2. Register record in Supabase Database
@@ -404,9 +458,14 @@ class _AdminUploadWidgetState extends State<AdminUploadWidget> {
                 : _descController.text.trim(),
             'type': _resourceType,
             'archive_url': archiveDirectUrl,
-            'text_content': _resourceType == 'text'
-                ? _textContentController.text.trim()
+            'text_content':
+                (_resourceType == 'text' || _resourceType == 'post') &&
+                    textContent.isNotEmpty
+                ? textContent
                 : null,
+            'attachments': _resourceType == 'post'
+                ? uploadedAttachments
+                : <Map<String, dynamic>>[],
             'category': _selectedCategory,
           })
           .select()
@@ -426,7 +485,7 @@ class _AdminUploadWidgetState extends State<AdminUploadWidget> {
         _isUploading = false;
         _uploadProgress = 1.0;
         _uploadStatus = 'Successfully Published!';
-        _selectedFile = null;
+        _selectedFiles = [];
       });
 
       _titleController.clear();
@@ -434,7 +493,7 @@ class _AdminUploadWidgetState extends State<AdminUploadWidget> {
       _textContentController.clear();
 
       // Start Ingestion Countdown Tracking
-      if (_resourceType != 'text') {
+      if (hasArchiveFiles) {
         _startIngestionCountdown(newlyCreated, delaySeconds);
       }
 
@@ -451,6 +510,8 @@ class _AdminUploadWidgetState extends State<AdminUploadWidget> {
                   child: Text(
                     _resourceType == 'text'
                         ? 'تم نشر الفائدة بنجاح!'
+                        : _resourceType == 'post' && !hasArchiveFiles
+                        ? 'تم نشر المنشور بنجاح!'
                         : 'تم الرفع لأرشيف الإنترنت! بدأ مؤقت التجهيز ($delaySeconds ثانية).',
                   ),
                 ),
@@ -808,7 +869,7 @@ class _AdminUploadWidgetState extends State<AdminUploadWidget> {
                   ),
 
                   // S3 Key Banner if missing
-                  if (!_hasArchiveKeys) ...[
+                  if (_requiresArchiveKeys && !_hasArchiveKeys) ...[
                     const SizedBox(height: 14),
                     Container(
                       padding: const EdgeInsets.symmetric(
@@ -868,10 +929,18 @@ class _AdminUploadWidgetState extends State<AdminUploadWidget> {
                           Icons.videocam,
                         ),
                         const SizedBox(width: 8),
+                        _buildTypeChip('image', 'صورة', Icons.image_outlined),
+                        const SizedBox(width: 8),
                         _buildTypeChip(
                           'text',
                           'اقتباس / فائدة',
                           Icons.format_quote,
+                        ),
+                        const SizedBox(width: 8),
+                        _buildTypeChip(
+                          'post',
+                          'منشور متعدد الوسائط',
+                          Icons.post_add,
                         ),
                       ],
                     ),
@@ -896,7 +965,7 @@ class _AdminUploadWidgetState extends State<AdminUploadWidget> {
                               : const Color(0xFFF8FAFC),
                           borderRadius: BorderRadius.circular(16),
                           border: Border.all(
-                            color: _selectedFile == null
+                            color: _selectedFiles.isEmpty
                                 ? radiantGold.withValues(alpha: 0.4)
                                 : radiantGold,
                             width: 1.5,
@@ -905,7 +974,7 @@ class _AdminUploadWidgetState extends State<AdminUploadWidget> {
                         child: Column(
                           children: [
                             Icon(
-                              _selectedFile == null
+                              _selectedFiles.isEmpty
                                   ? Icons.file_upload_outlined
                                   : Icons.check_circle_outline,
                               size: 40,
@@ -913,9 +982,13 @@ class _AdminUploadWidgetState extends State<AdminUploadWidget> {
                             ),
                             const SizedBox(height: 10),
                             Text(
-                              _selectedFile == null
-                                  ? 'اضغط لاختيار ملف ${_resourceType.toUpperCase()}'
-                                  : _selectedFile!.name,
+                              _selectedFiles.isEmpty
+                                  ? _resourceType == 'post'
+                                        ? 'اضغط لإضافة صور أو ملفات للمنشور'
+                                        : 'اضغط لاختيار ملف ${_resourceType.toUpperCase()}'
+                                  : _resourceType == 'post'
+                                  ? 'تم اختيار ${_selectedFiles.length} ملف • اضغط لإضافة المزيد'
+                                  : _selectedFiles.first.name,
                               textAlign: TextAlign.center,
                               style: TextStyle(
                                 fontWeight: FontWeight.bold,
@@ -925,13 +998,17 @@ class _AdminUploadWidgetState extends State<AdminUploadWidget> {
                             ),
                             const SizedBox(height: 4),
                             Text(
-                              _selectedFile == null
-                                  ? 'الصيغ المدعومة: ${_resourceType == 'pdf'
-                                        ? 'PDF'
-                                        : _resourceType == 'audio'
-                                        ? 'MP3, M4A, WAV'
-                                        : 'MP4, MKV, MOV'}'
-                                  : '${_formatFileSize(_selectedFile!.size)} • اضغط للاستبدال',
+                              _selectedFiles.isEmpty
+                                  ? 'الصيغ المدعومة: ${switch (_resourceType) {
+                                      'pdf' => 'PDF',
+                                      'audio' => 'MP3, M4A, WAV, AAC, OGG',
+                                      'video' => 'MP4, MKV, MOV, WEBM',
+                                      'image' => 'JPG, PNG, GIF, WEBP',
+                                      _ => 'PDF, صوت، فيديو وصور',
+                                    }}'
+                                  : _resourceType == 'post'
+                                  ? 'اختر صوراً أو ملفات إضافية كلما ضغطت هنا'
+                                  : '${_formatFileSize(_selectedFiles.first.size)} • اضغط للاستبدال',
                               style: const TextStyle(
                                 fontSize: 12,
                                 color: Colors.grey,
@@ -941,6 +1018,31 @@ class _AdminUploadWidgetState extends State<AdminUploadWidget> {
                         ),
                       ),
                     ),
+                    if (_selectedFiles.isNotEmpty) ...[
+                      const SizedBox(height: 8),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 4,
+                        children: [
+                          for (
+                            var index = 0;
+                            index < _selectedFiles.length;
+                            index++
+                          )
+                            InputChip(
+                              label: Text(
+                                '${_selectedFiles[index].name} (${_formatFileSize(_selectedFiles[index].size)})',
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              onDeleted: _isUploading
+                                  ? null
+                                  : () => setState(
+                                      () => _selectedFiles.removeAt(index),
+                                    ),
+                            ),
+                        ],
+                      ),
+                    ],
                     const SizedBox(height: 16),
                   ],
 
@@ -1010,13 +1112,17 @@ class _AdminUploadWidgetState extends State<AdminUploadWidget> {
                   const SizedBox(height: 14),
 
                   // Quote Content if Text type
-                  if (_resourceType == 'text') ...[
+                  if (_resourceType == 'text' || _resourceType == 'post') ...[
                     TextFormField(
                       controller: _textContentController,
                       maxLines: 4,
                       decoration: InputDecoration(
-                        labelText: 'نص الفائدة أو الاقتباس *',
-                        hintText: 'اكتب نص الفائدة العلمية أو الحديث هنا...',
+                        labelText: _resourceType == 'text'
+                            ? 'نص الفائدة أو الاقتباس *'
+                            : 'نص المنشور (اختياري)',
+                        hintText: _resourceType == 'text'
+                            ? 'اكتب نص الفائدة العلمية أو الحديث هنا...'
+                            : 'اكتب نصاً يرافق الملفات المرفقة...',
                         prefixIcon: const Icon(
                           Icons.format_quote,
                           color: radiantGold,
@@ -1025,7 +1131,9 @@ class _AdminUploadWidgetState extends State<AdminUploadWidget> {
                           borderRadius: BorderRadius.circular(14),
                         ),
                       ),
-                      validator: (val) => val == null || val.trim().isEmpty
+                      validator: (val) =>
+                          _resourceType == 'text' &&
+                              (val == null || val.trim().isEmpty)
                           ? 'نص الفائدة مطلوب'
                           : null,
                     ),
@@ -1133,7 +1241,9 @@ class _AdminUploadWidgetState extends State<AdminUploadWidget> {
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
                                 Icon(
-                                  _resourceType == 'text'
+                                  _resourceType == 'text' ||
+                                          (_resourceType == 'post' &&
+                                              _selectedFiles.isEmpty)
                                       ? Icons.post_add
                                       : Icons.cloud_upload,
                                   color: radiantGold,
@@ -1142,6 +1252,8 @@ class _AdminUploadWidgetState extends State<AdminUploadWidget> {
                                 Text(
                                   _resourceType == 'text'
                                       ? 'نشر الفائدة الآن'
+                                      : _resourceType == 'post'
+                                      ? 'نشر المنشور والملفات'
                                       : 'رفع ونشر المادة مع مؤقت التجهيز',
                                   style: const TextStyle(
                                     fontSize: 15,
@@ -1202,7 +1314,7 @@ class _AdminUploadWidgetState extends State<AdminUploadWidget> {
         if (selected) {
           setState(() {
             _resourceType = type;
-            _selectedFile = null;
+            _selectedFiles = [];
           });
         }
       },

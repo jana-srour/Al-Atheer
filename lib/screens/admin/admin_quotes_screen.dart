@@ -10,107 +10,12 @@ class AdminQuotesScreen extends StatefulWidget {
 }
 
 class _AdminQuotesScreenState extends State<AdminQuotesScreen> {
-  Future<void> _addQuote() async {
-    final titleController = TextEditingController();
-    final quoteController = TextEditingController();
-    final sourceController = TextEditingController();
-    var saving = false;
-    String? error;
-
-    await showDialog<void>(
+  Future<void> _addQuote() {
+    return showDialog<void>(
       context: context,
-      builder: (dialogContext) => StatefulBuilder(
-        builder: (context, setDialogState) => AlertDialog(
-          title: const Text('إضافة حكمة يومية'),
-          content: SizedBox(
-            width: 520,
-            child: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  TextField(
-                    controller: titleController,
-                    decoration: const InputDecoration(labelText: 'العنوان'),
-                  ),
-                  TextField(
-                    controller: quoteController,
-                    minLines: 2,
-                    maxLines: 5,
-                    decoration: const InputDecoration(labelText: 'النص'),
-                  ),
-                  TextField(
-                    controller: sourceController,
-                    decoration: const InputDecoration(
-                      labelText: 'المصدر (اختياري)',
-                    ),
-                  ),
-                  if (error != null) ...[
-                    const SizedBox(height: 8),
-                    Text(
-                      error!,
-                      style: TextStyle(
-                        color: Theme.of(context).colorScheme.error,
-                      ),
-                    ),
-                  ],
-                ],
-              ),
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: saving ? null : () => Navigator.pop(dialogContext),
-              child: const Text('إلغاء'),
-            ),
-            FilledButton(
-              onPressed: saving
-                  ? null
-                  : () async {
-                      final title = titleController.text.trim();
-                      final quote = quoteController.text.trim();
-                      if (title.isEmpty || quote.isEmpty) {
-                        setDialogState(
-                          () => error = 'أدخل العنوان ونص الحكمة.',
-                        );
-                        return;
-                      }
-                      setDialogState(() {
-                        saving = true;
-                        error = null;
-                      });
-                      try {
-                        await context.read<ResourceProvider>().addCuratedQuote(
-                          title: title,
-                          quote: quote,
-                          source: sourceController.text.trim(),
-                        );
-                        if (dialogContext.mounted) {
-                          Navigator.pop(dialogContext);
-                        }
-                      } catch (exception) {
-                        if (dialogContext.mounted) {
-                          setDialogState(() {
-                            saving = false;
-                            error = 'تعذر حفظ الحكمة: $exception';
-                          });
-                        }
-                      }
-                    },
-              child: saving
-                  ? const SizedBox(
-                      width: 18,
-                      height: 18,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : const Text('إضافة'),
-            ),
-          ],
-        ),
-      ),
+      barrierDismissible: false,
+      builder: (_) => const _AddCuratedQuoteDialog(),
     );
-    titleController.dispose();
-    quoteController.dispose();
-    sourceController.dispose();
   }
 
   @override
@@ -216,6 +121,121 @@ class _AdminQuotesScreenState extends State<AdminQuotesScreen> {
                   },
                 ),
         ),
+      ),
+    );
+  }
+}
+
+class _AddCuratedQuoteDialog extends StatefulWidget {
+  const _AddCuratedQuoteDialog();
+
+  @override
+  State<_AddCuratedQuoteDialog> createState() => _AddCuratedQuoteDialogState();
+}
+
+class _AddCuratedQuoteDialogState extends State<_AddCuratedQuoteDialog> {
+  final _titleController = TextEditingController();
+  final _quoteController = TextEditingController();
+  final _sourceController = TextEditingController();
+  bool _isSaving = false;
+  String? _error;
+
+  @override
+  void dispose() {
+    _titleController.dispose();
+    _quoteController.dispose();
+    _sourceController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _save() async {
+    if (_isSaving) return;
+
+    final title = _titleController.text.trim();
+    final quote = _quoteController.text.trim();
+    if (title.isEmpty || quote.isEmpty) {
+      setState(() => _error = 'أدخل العنوان ونص الحكمة.');
+      return;
+    }
+
+    setState(() {
+      _isSaving = true;
+      _error = null;
+    });
+
+    try {
+      await context.read<ResourceProvider>().addCuratedQuote(
+        title: title,
+        quote: quote,
+        source: _sourceController.text.trim(),
+      );
+      if (mounted) Navigator.pop(context);
+    } catch (exception) {
+      if (!mounted) return;
+      setState(() {
+        _isSaving = false;
+        _error = 'تعذر حفظ الحكمة: $exception';
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return PopScope(
+      canPop: !_isSaving,
+      child: AlertDialog(
+        title: const Text('إضافة حكمة يومية'),
+        content: SizedBox(
+          width: 520,
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: _titleController,
+                  decoration: const InputDecoration(labelText: 'العنوان'),
+                ),
+                TextField(
+                  controller: _quoteController,
+                  minLines: 2,
+                  maxLines: 5,
+                  decoration: const InputDecoration(labelText: 'النص'),
+                ),
+                TextField(
+                  controller: _sourceController,
+                  decoration: const InputDecoration(
+                    labelText: 'المصدر (اختياري)',
+                  ),
+                ),
+                if (_error != null) ...[
+                  const SizedBox(height: 8),
+                  Text(
+                    _error!,
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.error,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: _isSaving ? null : () => Navigator.pop(context),
+            child: const Text('إلغاء'),
+          ),
+          FilledButton(
+            onPressed: _isSaving ? null : _save,
+            child: _isSaving
+                ? const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Text('إضافة'),
+          ),
+        ],
       ),
     );
   }

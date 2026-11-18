@@ -7,9 +7,11 @@ import '../providers/settings_provider.dart';
 import '../widgets/audio_player_widget.dart';
 import '../widgets/daily_wisdom_card.dart';
 import '../widgets/featured_hero_card.dart';
+import '../widgets/image_resource_widget.dart';
 import '../widgets/islamic_header_widget.dart';
 import '../widgets/library_stats_bar.dart';
 import '../widgets/pdf_viewer_widget.dart';
+import '../widgets/post_resource_widget.dart';
 import '../widgets/text_quote_widget.dart';
 import '../widgets/video_player_widget.dart';
 import 'playlist_library_screen.dart';
@@ -30,9 +32,11 @@ class _HomeScreenState extends State<HomeScreen>
   final List<Map<String, dynamic>> _tabs = [
     {'title': 'الكل', 'type': 'all', 'icon': Icons.grid_view_rounded},
     {'title': 'كتب PDF', 'type': 'pdf', 'icon': Icons.menu_book_rounded},
+    {'title': 'صور', 'type': 'image', 'icon': Icons.image_outlined},
     {'title': 'صوتيات', 'type': 'audio', 'icon': Icons.audiotrack_rounded},
     {'title': 'مرئيات', 'type': 'video', 'icon': Icons.videocam_rounded},
     {'title': 'درر وفوائد', 'type': 'text', 'icon': Icons.format_quote_rounded},
+    {'title': 'منشورات', 'type': 'post', 'icon': Icons.post_add},
   ];
 
   @override
@@ -311,105 +315,126 @@ class _HomeScreenState extends State<HomeScreen>
             ),
           ];
         },
-        body: resourceProv.isLoading
-            ? const Center(child: CircularProgressIndicator(color: radiantGold))
-            : displayList.isEmpty
-            ? Center(
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.all(24.0),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(24),
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: deepNavy.withValues(alpha: 0.1),
-                          border: Border.all(
-                            color: radiantGold.withValues(alpha: 0.3),
-                          ),
-                        ),
-                        child: Icon(
-                          _isFavoritesOnly
-                              ? Icons.star_border
-                              : Icons.auto_stories_outlined,
-                          size: 56,
-                          color: radiantGold,
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      Text(
-                        _isFavoritesOnly
-                            ? 'قائمة المفضلة فارغة'
-                            : 'لا توجد إصدارات مطابقة للبحث',
-                        style: const TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(height: 6),
-                      Text(
-                        _isFavoritesOnly
-                            ? 'اضغط على زر النجمة في أي بطاقة لإضافتها للمفضلة.'
-                            : (resourceProv.searchQuery.isNotEmpty
-                                  ? 'جرب البحث بكلمات أخرى أو اختر تصنيفاً مختلفاً'
-                                  : 'اختر تصنيفاً آخر أو قم بتحديث القائمة'),
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(
-                          fontSize: 13,
-                          color: Colors.grey,
-                        ),
-                      ),
-                      const SizedBox(height: 18),
-                      OutlinedButton.icon(
-                        style: OutlinedButton.styleFrom(
-                          side: const BorderSide(color: radiantGold),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                        ),
-                        icon: const Icon(Icons.refresh, color: radiantGold),
-                        label: const Text(
-                          'إعادة ضبط الفلاتر',
-                          style: TextStyle(color: radiantGold),
-                        ),
-                        onPressed: () {
-                          _searchController.clear();
-                          setState(() => _isFavoritesOnly = false);
-                          resourceProv.setSearchQuery('');
-                          resourceProv.setCategoryFilter('All');
-                          _tabController.animateTo(0);
-                        },
-                      ),
-                    ],
+        body: RefreshIndicator(
+          color: radiantGold,
+          onRefresh: () async {
+            await Future.wait([
+              resourceProv.fetchCategories(),
+              resourceProv.fetchResources(),
+              resourceProv.fetchCuratedQuotes(),
+              resourceProv.fetchPlaylists(),
+            ]);
+          },
+          child: ListView.builder(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.fromLTRB(14, 10, 14, 80),
+            itemCount: resourceProv.isLoading || displayList.isEmpty
+                ? 1
+                : displayList.length,
+            itemBuilder: (context, index) {
+              if (resourceProv.isLoading) {
+                return SizedBox(
+                  height: MediaQuery.sizeOf(context).height * 0.6,
+                  child: const Center(
+                    child: CircularProgressIndicator(color: radiantGold),
                   ),
-                ),
-              )
-            : RefreshIndicator(
-                color: radiantGold,
-                onRefresh: () async {
-                  await resourceProv.fetchCategories();
-                  await resourceProv.fetchResources();
-                },
-                child: ListView.builder(
-                  padding: const EdgeInsets.fromLTRB(14, 10, 14, 80),
-                  itemCount: displayList.length,
-                  itemBuilder: (context, index) {
-                    final item = displayList[index];
-                    return Center(
-                      child: ConstrainedBox(
-                        constraints: const BoxConstraints(maxWidth: 1050),
-                        child: switch (item.type) {
-                          'audio' => AudioPlayerWidget(resource: item),
-                          'video' => VideoPlayerWidget(resource: item),
-                          'pdf' => PdfViewerWidget(resource: item),
-                          'text' || _ => TextQuoteWidget(resource: item),
-                        },
+                );
+              }
+
+              if (displayList.isEmpty) {
+                return SizedBox(
+                  height: MediaQuery.sizeOf(context).height * 0.6,
+                  child: Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(24),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(24),
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: deepNavy.withValues(alpha: 0.1),
+                              border: Border.all(
+                                color: radiantGold.withValues(alpha: 0.3),
+                              ),
+                            ),
+                            child: Icon(
+                              _isFavoritesOnly
+                                  ? Icons.star_border
+                                  : Icons.auto_stories_outlined,
+                              size: 56,
+                              color: radiantGold,
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+                          Text(
+                            _isFavoritesOnly
+                                ? 'قائمة المفضلة فارغة'
+                                : 'لا توجد إصدارات مطابقة للبحث',
+                            style: const TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            _isFavoritesOnly
+                                ? 'اضغط على زر النجمة في أي بطاقة لإضافتها للمفضلة.'
+                                : (resourceProv.searchQuery.isNotEmpty
+                                      ? 'جرب البحث بكلمات أخرى أو اختر تصنيفاً مختلفاً'
+                                      : 'اختر تصنيفاً آخر أو اسحب للأسفل للتحديث'),
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(
+                              fontSize: 13,
+                              color: Colors.grey,
+                            ),
+                          ),
+                          const SizedBox(height: 18),
+                          OutlinedButton.icon(
+                            style: OutlinedButton.styleFrom(
+                              side: const BorderSide(color: radiantGold),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
+                            icon: const Icon(Icons.refresh, color: radiantGold),
+                            label: const Text(
+                              'إعادة ضبط الفلاتر',
+                              style: TextStyle(color: radiantGold),
+                            ),
+                            onPressed: () {
+                              _searchController.clear();
+                              setState(() => _isFavoritesOnly = false);
+                              resourceProv.setSearchQuery('');
+                              resourceProv.setCategoryFilter('All');
+                              _tabController.animateTo(0);
+                            },
+                          ),
+                        ],
                       ),
-                    );
+                    ),
+                  ),
+                );
+              }
+
+              final item = displayList[index];
+              return Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 1050),
+                  child: switch (item.type) {
+                    'audio' => AudioPlayerWidget(resource: item),
+                    'video' => VideoPlayerWidget(resource: item),
+                    'pdf' => PdfViewerWidget(resource: item),
+                    'image' => ImageResourceWidget(resource: item),
+                    'post' => PostResourceWidget(resource: item),
+                    'text' || _ => TextQuoteWidget(resource: item),
                   },
                 ),
-              ),
+              );
+            },
+          ),
+        ),
       ),
       floatingActionButton: (auth.isAuthenticated && auth.isAdmin)
           ? FloatingActionButton.extended(
@@ -439,7 +464,9 @@ Widget _buildTypeCards(
     ('Audio', 'صوتيات', Icons.mic_none_rounded, 'audio'),
     ('Video lessons', 'دروس مرئية', Icons.video_library_outlined, 'video'),
     ('PDF books', 'كتب ومطبوعات', Icons.menu_book_rounded, 'pdf'),
+    ('Photos', 'صور', Icons.image_outlined, 'image'),
     ('Quotes', 'أقوال وفوائد', Icons.format_quote_rounded, 'text'),
+    ('Posts', 'منشورات', Icons.post_add, 'post'),
     ('All library', 'كل المواد', Icons.auto_stories_outlined, 'all'),
     ('Playlists', 'قوائم ودورات', Icons.queue_music_rounded, 'playlists'),
   ];

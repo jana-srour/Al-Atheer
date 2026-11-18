@@ -417,6 +417,8 @@ class _PlaylistEditorDialogState extends State<_PlaylistEditorDialog> {
     'audio' => Icons.audiotrack_rounded,
     'video' => Icons.videocam_rounded,
     'pdf' => Icons.picture_as_pdf_rounded,
+    'image' => Icons.image_outlined,
+    'post' => Icons.post_add,
     _ => Icons.format_quote_rounded,
   };
 }

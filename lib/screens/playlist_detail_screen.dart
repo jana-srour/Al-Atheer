@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import '../models/playlist_model.dart';
 import '../widgets/audio_player_widget.dart';
+import '../widgets/image_resource_widget.dart';
 import '../widgets/pdf_viewer_widget.dart';
+import '../widgets/post_resource_widget.dart';
 import '../widgets/text_quote_widget.dart';
 import '../widgets/video_player_widget.dart';
 
@@ -42,6 +44,8 @@ class PlaylistDetailScreen extends StatelessWidget {
                         'audio' => AudioPlayerWidget(resource: resource),
                         'video' => VideoPlayerWidget(resource: resource),
                         'pdf' => PdfViewerWidget(resource: resource),
+                        'image' => ImageResourceWidget(resource: resource),
+                        'post' => PostResourceWidget(resource: resource),
                         'text' || _ => TextQuoteWidget(resource: resource),
                       },
                   ],

@@ -360,7 +360,9 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
     final audioCount = _resources.where((r) => r.type == 'audio').length;
     final videoCount = _resources.where((r) => r.type == 'video').length;
     final pdfCount = _resources.where((r) => r.type == 'pdf').length;
+    final imageCount = _resources.where((r) => r.type == 'image').length;
     final quoteCount = _resources.where((r) => r.type == 'text').length;
+    final postCount = _resources.where((r) => r.type == 'post').length;
 
     return Scaffold(
       appBar: AppBar(
@@ -581,11 +583,15 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
                           ],
                           _buildFilterChoice('pdf', 'PDFs ($pdfCount)'),
                           const SizedBox(width: 6),
+                          _buildFilterChoice('image', 'صور ($imageCount)'),
+                          const SizedBox(width: 6),
                           _buildFilterChoice('audio', 'صوتيات ($audioCount)'),
                           const SizedBox(width: 6),
                           _buildFilterChoice('video', 'مرئيات ($videoCount)'),
                           const SizedBox(width: 6),
                           _buildFilterChoice('text', 'اقتباسات ($quoteCount)'),
+                          const SizedBox(width: 6),
+                          _buildFilterChoice('post', 'منشورات ($postCount)'),
                         ],
                       ),
                     ),
@@ -817,6 +823,14 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
         typeIcon = Icons.picture_as_pdf;
         iconColor = Colors.redAccent;
         break;
+      case 'image':
+        typeIcon = Icons.image_outlined;
+        iconColor = Colors.teal;
+        break;
+      case 'post':
+        typeIcon = Icons.post_add;
+        iconColor = Colors.blueAccent;
+        break;
       case 'text':
       default:
         typeIcon = Icons.format_quote;
@@ -1027,7 +1041,9 @@ class _ResourceEditDialogState extends State<ResourceEditDialog> {
                 ? null
                 : _descCtrl.text.trim(),
             'archive_url': _type != 'text' ? _urlCtrl.text.trim() : null,
-            'text_content': _type == 'text' ? _textCtrl.text.trim() : null,
+            'text_content': _type == 'text' || _type == 'post'
+                ? _textCtrl.text.trim()
+                : null,
             'type': _type,
             'category': _category,
           })
@@ -1078,6 +1094,11 @@ class _ResourceEditDialogState extends State<ResourceEditDialog> {
                     value: 'text',
                     child: Text('اقتباس / فائدة'),
                   ),
+                  DropdownMenuItem(value: 'image', child: Text('صورة')),
+                  DropdownMenuItem(
+                    value: 'post',
+                    child: Text('منشور متعدد الوسائط'),
+                  ),
                 ],
                 onChanged: (v) => setState(() => _type = v!),
               ),
@@ -1100,11 +1121,13 @@ class _ResourceEditDialogState extends State<ResourceEditDialog> {
                 ),
                 const SizedBox(height: 12),
               ],
-              if (_type == 'text') ...[
+              if (_type == 'text' || _type == 'post') ...[
                 TextFormField(
                   controller: _textCtrl,
                   maxLines: 4,
-                  decoration: const InputDecoration(labelText: 'نص الفائدة'),
+                  decoration: InputDecoration(
+                    labelText: _type == 'text' ? 'نص الفائدة' : 'نص المنشور',
+                  ),
                 ),
                 const SizedBox(height: 12),
               ],

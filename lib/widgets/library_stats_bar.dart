@@ -8,11 +8,7 @@ class LibraryStatsBar extends StatelessWidget {
   final Function(String type)? onSelectType;
   final bool showStats;
 
-  const LibraryStatsBar({
-    super.key,
-    this.onSelectType,
-    this.showStats = true,
-  });
+  const LibraryStatsBar({super.key, this.onSelectType, this.showStats = true});
 
   @override
   Widget build(BuildContext context) {
@@ -24,9 +20,11 @@ class LibraryStatsBar extends StatelessWidget {
     final processingList = resProv.processingResources;
     final totalCount = resProv.resources.length;
     final pdfCount = resProv.countByType('pdf');
+    final imageCount = resProv.countByType('image');
     final audioCount = resProv.countByType('audio');
     final videoCount = resProv.countByType('video');
     final textCount = resProv.countByType('text');
+    final postCount = resProv.countByType('post');
 
     return Column(
       children: [
@@ -43,7 +41,10 @@ class LibraryStatsBar extends StatelessWidget {
               },
               borderRadius: BorderRadius.circular(16),
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 10,
+                ),
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
                     colors: [
@@ -56,7 +57,11 @@ class LibraryStatsBar extends StatelessWidget {
                 ),
                 child: Row(
                   children: [
-                    const Icon(Icons.hourglass_top, color: radiantGold, size: 20),
+                    const Icon(
+                      Icons.hourglass_top,
+                      color: radiantGold,
+                      size: 20,
+                    ),
                     const SizedBox(width: 10),
                     Expanded(
                       child: Column(
@@ -74,13 +79,19 @@ class LibraryStatsBar extends StatelessWidget {
                             'المتبقي: ${processingList.first.formattedRemainingTime(delaySeconds: settings.archiveIngestionDelaySeconds)} • جاري البث التلقائي',
                             style: TextStyle(
                               fontSize: 11,
-                              color: isDark ? Colors.grey.shade300 : Colors.grey.shade700,
+                              color: isDark
+                                  ? Colors.grey.shade300
+                                  : Colors.grey.shade700,
                             ),
                           ),
                         ],
                       ),
                     ),
-                    const Icon(Icons.arrow_forward_ios, size: 12, color: radiantGold),
+                    const Icon(
+                      Icons.arrow_forward_ios,
+                      size: 12,
+                      color: radiantGold,
+                    ),
                   ],
                 ),
               ),
@@ -91,62 +102,82 @@ class LibraryStatsBar extends StatelessWidget {
         // Informative Snapshot Stats Row
         if (showStats && onSelectType != null)
           SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-          child: Row(
-            children: [
-              _buildStatChip(
-                label: 'الكل',
-                count: totalCount,
-                icon: Icons.grid_view_rounded,
-                color: radiantGold,
-                isSelected: resProv.selectedType == 'all',
-                onTap: () => onSelectType!('all'),
-                isDark: isDark,
-              ),
-              const SizedBox(width: 8),
-              _buildStatChip(
-                label: 'كتب PDF',
-                count: pdfCount,
-                icon: Icons.menu_book_rounded,
-                color: Colors.redAccent,
-                isSelected: resProv.selectedType == 'pdf',
-                onTap: () => onSelectType!('pdf'),
-                isDark: isDark,
-              ),
-              const SizedBox(width: 8),
-              _buildStatChip(
-                label: 'صوتيات',
-                count: audioCount,
-                icon: Icons.audiotrack_rounded,
-                color: radiantGold,
-                isSelected: resProv.selectedType == 'audio',
-                onTap: () => onSelectType!('audio'),
-                isDark: isDark,
-              ),
-              const SizedBox(width: 8),
-              _buildStatChip(
-                label: 'مرئيات',
-                count: videoCount,
-                icon: Icons.videocam_rounded,
-                color: Colors.purpleAccent,
-                isSelected: resProv.selectedType == 'video',
-                onTap: () => onSelectType!('video'),
-                isDark: isDark,
-              ),
-              const SizedBox(width: 8),
-              _buildStatChip(
-                label: 'درر وفوائد',
-                count: textCount,
-                icon: Icons.format_quote_rounded,
-                color: radiantGold,
-                isSelected: resProv.selectedType == 'text',
-                onTap: () => onSelectType!('text'),
-                isDark: isDark,
-              ),
-            ],
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+            child: Row(
+              children: [
+                _buildStatChip(
+                  label: 'الكل',
+                  count: totalCount,
+                  icon: Icons.grid_view_rounded,
+                  color: radiantGold,
+                  isSelected: resProv.selectedType == 'all',
+                  onTap: () => onSelectType!('all'),
+                  isDark: isDark,
+                ),
+                const SizedBox(width: 8),
+                _buildStatChip(
+                  label: 'كتب PDF',
+                  count: pdfCount,
+                  icon: Icons.menu_book_rounded,
+                  color: Colors.redAccent,
+                  isSelected: resProv.selectedType == 'pdf',
+                  onTap: () => onSelectType!('pdf'),
+                  isDark: isDark,
+                ),
+                const SizedBox(width: 8),
+                _buildStatChip(
+                  label: 'صور',
+                  count: imageCount,
+                  icon: Icons.image_outlined,
+                  color: Colors.teal,
+                  isSelected: resProv.selectedType == 'image',
+                  onTap: () => onSelectType!('image'),
+                  isDark: isDark,
+                ),
+                const SizedBox(width: 8),
+                _buildStatChip(
+                  label: 'صوتيات',
+                  count: audioCount,
+                  icon: Icons.audiotrack_rounded,
+                  color: radiantGold,
+                  isSelected: resProv.selectedType == 'audio',
+                  onTap: () => onSelectType!('audio'),
+                  isDark: isDark,
+                ),
+                const SizedBox(width: 8),
+                _buildStatChip(
+                  label: 'مرئيات',
+                  count: videoCount,
+                  icon: Icons.videocam_rounded,
+                  color: Colors.purpleAccent,
+                  isSelected: resProv.selectedType == 'video',
+                  onTap: () => onSelectType!('video'),
+                  isDark: isDark,
+                ),
+                const SizedBox(width: 8),
+                _buildStatChip(
+                  label: 'درر وفوائد',
+                  count: textCount,
+                  icon: Icons.format_quote_rounded,
+                  color: radiantGold,
+                  isSelected: resProv.selectedType == 'text',
+                  onTap: () => onSelectType!('text'),
+                  isDark: isDark,
+                ),
+                const SizedBox(width: 8),
+                _buildStatChip(
+                  label: 'منشورات',
+                  count: postCount,
+                  icon: Icons.post_add,
+                  color: Colors.blueAccent,
+                  isSelected: resProv.selectedType == 'post',
+                  onTap: () => onSelectType!('post'),
+                  isDark: isDark,
+                ),
+              ],
+            ),
           ),
-        ),
       ],
     );
   }
@@ -191,11 +222,7 @@ class LibraryStatsBar extends StatelessWidget {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(
-              icon,
-              size: 14,
-              color: isSelected ? radiantGold : color,
-            ),
+            Icon(icon, size: 14, color: isSelected ? radiantGold : color),
             const SizedBox(width: 6),
             Text(
               label,

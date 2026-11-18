@@ -67,9 +67,13 @@ class _AppBootstrapState extends State<AppBootstrap> {
   @override
   Widget build(BuildContext context) {
     if (_isInitializing) {
-      return const MaterialApp(
+      return MaterialApp(
         debugShowCheckedModeBanner: false,
-        home: _StartupLoadingScreen(),
+        home: const _StartupLoadingScreen(),
+        onGenerateRoute: (routeSettings) => MaterialPageRoute<void>(
+          settings: routeSettings,
+          builder: (_) => const _StartupLoadingScreen(),
+        ),
       );
     }
 
@@ -77,6 +81,10 @@ class _AppBootstrapState extends State<AppBootstrap> {
       return MaterialApp(
         debugShowCheckedModeBanner: false,
         home: _StartupErrorScreen(onRetry: _initializeSupabase),
+        onGenerateRoute: (routeSettings) => MaterialPageRoute<void>(
+          settings: routeSettings,
+          builder: (_) => _StartupErrorScreen(onRetry: _initializeSupabase),
+        ),
       );
     }
 

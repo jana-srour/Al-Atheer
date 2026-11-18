@@ -38,6 +38,13 @@ credentials to a client app.
 
 ## Supabase reset and setup
 
+Before using photo uploads or mixed-media posts, run the non-destructive
+[`supabase_resource_attachments.sql`](./supabase_resource_attachments.sql)
+migration in the Supabase SQL Editor. It adds a JSONB attachment list to
+`public.resources` and allows the `image` and `post` resource types. Each
+attachment is uploaded to Internet Archive and stored with its media type,
+filename, and direct URL.
+
 [`supabase_reset_setup.sql`](./supabase_reset_setup.sql) is a **destructive
 reset** for this app's database objects. It deletes existing rows and recreates
 `public.profiles`, `public.admin_email_invites`, `public.categories`, and

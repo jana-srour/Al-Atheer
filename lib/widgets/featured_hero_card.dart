@@ -11,6 +11,22 @@ class FeaturedHeroCard extends StatelessWidget {
   Widget build(BuildContext context) {
     const radiantGold = Color(0xFFF59E0B);
     const deepNavy = Color(0xFF0F172A);
+    final resourceIcon = switch (resource.type) {
+      'pdf' => Icons.menu_book,
+      'audio' => Icons.audiotrack,
+      'video' => Icons.videocam,
+      'image' => Icons.image_outlined,
+      'post' => Icons.post_add,
+      _ => Icons.format_quote,
+    };
+    final actionLabel = switch (resource.type) {
+      'pdf' => 'تصفح الكتاب',
+      'audio' => 'استمع الآن',
+      'video' => 'شاهد الدرس',
+      'image' => 'عرض الصورة',
+      'post' => 'عرض المنشور',
+      _ => 'قراءة الفائدة',
+    };
 
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -19,11 +35,7 @@ class FeaturedHeroCard extends StatelessWidget {
         gradient: const LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [
-            Color(0xFF060D1A),
-            Color(0xFF0F172A),
-            Color(0xFF1E3A5F),
-          ],
+          colors: [Color(0xFF060D1A), Color(0xFF0F172A), Color(0xFF1E3A5F)],
         ),
         border: Border.all(color: radiantGold, width: 1.4),
         boxShadow: [
@@ -49,7 +61,10 @@ class FeaturedHeroCard extends StatelessWidget {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 4,
+                      ),
                       decoration: BoxDecoration(
                         gradient: const LinearGradient(
                           colors: [Color(0xFFFBBF24), Color(0xFFD97706)],
@@ -79,7 +94,10 @@ class FeaturedHeroCard extends StatelessWidget {
                       ),
                     ),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 4,
+                      ),
                       decoration: BoxDecoration(
                         color: Colors.white.withValues(alpha: 0.12),
                         borderRadius: BorderRadius.circular(10),
@@ -122,17 +140,7 @@ class FeaturedHeroCard extends StatelessWidget {
                         ],
                       ),
                       child: Center(
-                        child: Icon(
-                          resource.type == 'pdf'
-                              ? Icons.menu_book
-                              : (resource.type == 'audio'
-                                  ? Icons.audiotrack
-                                  : (resource.type == 'video'
-                                      ? Icons.videocam
-                                      : Icons.format_quote)),
-                          color: deepNavy,
-                          size: 30,
-                        ),
+                        child: Icon(resourceIcon, color: deepNavy, size: 30),
                       ),
                     ),
                     const SizedBox(width: 14),
@@ -183,7 +191,10 @@ class FeaturedHeroCard extends StatelessWidget {
                       ),
                     ),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 6,
+                      ),
                       decoration: BoxDecoration(
                         color: radiantGold,
                         borderRadius: BorderRadius.circular(12),
@@ -192,13 +203,7 @@ class FeaturedHeroCard extends StatelessWidget {
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           Text(
-                            resource.type == 'pdf'
-                                ? 'تصفح الكتاب'
-                                : (resource.type == 'audio'
-                                    ? 'استمع الآن'
-                                    : (resource.type == 'video'
-                                        ? 'شاهد الدرس'
-                                        : 'قراءة الفائدة')),
+                            actionLabel,
                             style: const TextStyle(
                               color: deepNavy,
                               fontSize: 12,
