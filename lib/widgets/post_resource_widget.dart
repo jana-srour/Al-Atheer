@@ -74,6 +74,7 @@ class _PostResourceWidgetState extends State<PostResourceWidget> {
       type: attachment.type,
       archiveUrl: attachment.url,
       category: widget.resource.category,
+      subfolder: widget.resource.subfolder,
       createdAt: widget.resource.createdAt,
     );
   }
@@ -121,6 +122,11 @@ class _PostResourceWidgetState extends State<PostResourceWidget> {
             Text(
               resource.title,
               style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              resource.folderLabel,
+              style: Theme.of(context).textTheme.labelSmall,
             ),
             if (resource.description?.isNotEmpty ?? false) ...[
               const SizedBox(height: 6),

@@ -116,7 +116,7 @@ class FeaturedHeroCard extends StatelessWidget {
                         ),
                       ),
                       child: Text(
-                        resource.category,
+                        resource.folderLabel,
                         style: const TextStyle(
                           color: radiantGold,
                           fontSize: 11,

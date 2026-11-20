@@ -68,6 +68,11 @@ class ImageResourceWidget extends StatelessWidget {
                       fontWeight: FontWeight.bold,
                     ),
                   ),
+                  const SizedBox(height: 4),
+                  Text(
+                    resource.folderLabel,
+                    style: Theme.of(context).textTheme.labelSmall,
+                  ),
                   if (resource.description?.isNotEmpty ?? false) ...[
                     const SizedBox(height: 4),
                     Text(resource.description!),

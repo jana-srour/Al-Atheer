@@ -472,7 +472,7 @@ class _PlaylistEditorDialogState extends State<_PlaylistEditorDialog> {
                             overflow: TextOverflow.ellipsis,
                           ),
                           subtitle: Text(
-                            '${resource.typeLabel} • ${resource.category}',
+                            '${resource.typeLabel} • ${resource.folderLabel}',
                           ),
                           secondary: Icon(_iconForType(resource.type)),
                         );

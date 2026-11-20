@@ -30,6 +30,7 @@ class _AdminUploadWidgetState extends State<AdminUploadWidget> {
   bool _coverImageHidden = false;
   String _resourceType = 'pdf';
   String _selectedCategory = '';
+  String _selectedSubfolder = '';
 
   bool _isUploading = false;
   double _uploadProgress = 0.0;
@@ -504,6 +505,7 @@ class _AdminUploadWidgetState extends State<AdminUploadWidget> {
             'cover_image_url': coverImageUrl,
             'cover_image_hidden': _resourceType == 'post' && _coverImageHidden,
             'category': _selectedCategory,
+            'subfolder': _selectedSubfolder,
           })
           .select()
           .single();
@@ -586,7 +588,8 @@ class _AdminUploadWidgetState extends State<AdminUploadWidget> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final settings = Provider.of<SettingsProvider>(context);
 
-    final categories = Provider.of<ResourceProvider>(context).categories;
+    final resourceProvider = Provider.of<ResourceProvider>(context);
+    final categories = resourceProvider.categories;
 
     if (categories.isNotEmpty && !categories.contains(_selectedCategory)) {
       _selectedCategory = categories.first;
@@ -1129,7 +1132,10 @@ class _AdminUploadWidgetState extends State<AdminUploadWidget> {
                               value == null ? 'أضف تصنيفاً أولاً' : null,
                           onChanged: (val) {
                             if (val != null) {
-                              setState(() => _selectedCategory = val);
+                              setState(() {
+                                _selectedCategory = val;
+                                _selectedSubfolder = '';
+                              });
                             }
                           },
                         ),
@@ -1145,6 +1151,41 @@ class _AdminUploadWidgetState extends State<AdminUploadWidget> {
                       ),
                     ],
                   ),
+
+                  if (resourceProvider
+                      .subfoldersForCategory(_selectedCategory)
+                      .isNotEmpty) ...[
+                    const SizedBox(height: 12),
+                    DropdownButtonFormField<String>(
+                      initialValue: _selectedSubfolder,
+                      decoration: InputDecoration(
+                        labelText: 'المجلد الفرعي (اختياري)',
+                        prefixIcon: const Icon(
+                          Icons.folder_open_outlined,
+                          color: radiantGold,
+                        ),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                      ),
+                      items: [
+                        const DropdownMenuItem(
+                          value: '',
+                          child: Text('المجلد الرئيسي'),
+                        ),
+                        ...resourceProvider
+                            .subfoldersForCategory(_selectedCategory)
+                            .map(
+                              (subfolder) => DropdownMenuItem(
+                                value: subfolder,
+                                child: Text(subfolder),
+                              ),
+                            ),
+                      ],
+                      onChanged: (value) =>
+                          setState(() => _selectedSubfolder = value ?? ''),
+                    ),
+                  ],
 
                   const SizedBox(height: 14),
 

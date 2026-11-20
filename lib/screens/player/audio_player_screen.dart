@@ -311,7 +311,7 @@ class _AudioPlayerScreenState extends State<AudioPlayerScreen>
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: Text(
-                  widget.resource.category,
+                  widget.resource.folderLabel,
                   style: const TextStyle(
                     color: Colors.white,
                     fontWeight: FontWeight.bold,

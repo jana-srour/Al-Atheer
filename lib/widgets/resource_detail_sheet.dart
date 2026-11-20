@@ -72,14 +72,19 @@ class ResourceDetailSheet extends StatelessWidget {
                 Row(
                   children: [
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 4,
+                      ),
                       decoration: BoxDecoration(
                         color: deepNavy,
                         borderRadius: BorderRadius.circular(10),
-                        border: Border.all(color: radiantGold.withValues(alpha: 0.5)),
+                        border: Border.all(
+                          color: radiantGold.withValues(alpha: 0.5),
+                        ),
                       ),
                       child: Text(
-                        resource.category,
+                        resource.folderLabel,
                         style: const TextStyle(
                           color: radiantGold,
                           fontSize: 11,
@@ -89,14 +94,21 @@ class ResourceDetailSheet extends StatelessWidget {
                     ),
                     const SizedBox(width: 8),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 4,
+                      ),
                       decoration: BoxDecoration(
-                        color: (isDark ? Colors.white : Colors.black).withValues(alpha: 0.06),
+                        color: (isDark ? Colors.white : Colors.black)
+                            .withValues(alpha: 0.06),
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Text(
                         resource.typeLabel,
-                        style: const TextStyle(fontSize: 11, color: Colors.grey),
+                        style: const TextStyle(
+                          fontSize: 11,
+                          color: Colors.grey,
+                        ),
                       ),
                     ),
                   ],
@@ -112,7 +124,10 @@ class ResourceDetailSheet extends StatelessWidget {
                       onPressed: () => settings.toggleFavorite(resource.id),
                     ),
                     IconButton(
-                      icon: const Icon(Icons.share_outlined, color: Colors.grey),
+                      icon: const Icon(
+                        Icons.share_outlined,
+                        color: Colors.grey,
+                      ),
                       tooltip: 'مشاركة',
                       onPressed: () {
                         Share.share(
@@ -156,11 +171,17 @@ class ResourceDetailSheet extends StatelessWidget {
                   decoration: BoxDecoration(
                     color: Colors.amber.withValues(alpha: 0.12),
                     borderRadius: BorderRadius.circular(14),
-                    border: Border.all(color: Colors.amber.shade700.withValues(alpha: 0.5)),
+                    border: Border.all(
+                      color: Colors.amber.shade700.withValues(alpha: 0.5),
+                    ),
                   ),
                   child: Row(
                     children: [
-                      const Icon(Icons.hourglass_top, color: Colors.amber, size: 20),
+                      const Icon(
+                        Icons.hourglass_top,
+                        color: Colors.amber,
+                        size: 20,
+                      ),
                       const SizedBox(width: 10),
                       Expanded(
                         child: Column(
@@ -178,7 +199,9 @@ class ResourceDetailSheet extends StatelessWidget {
                               'متبقي حوالي ${resource.formattedRemainingTime(delaySeconds: settings.archiveIngestionDelaySeconds)} دقيقة لاكتمال الفهرسة لمنع خطأ (غير موجود). اضغط للفحص.',
                               style: TextStyle(
                                 fontSize: 11,
-                                color: isDark ? Colors.grey.shade300 : Colors.grey.shade800,
+                                color: isDark
+                                    ? Colors.grey.shade300
+                                    : Colors.grey.shade800,
                               ),
                             ),
                           ],
@@ -193,7 +216,8 @@ class ResourceDetailSheet extends StatelessWidget {
             ],
 
             // Description or Text Content
-            if (resource.description != null && resource.description!.isNotEmpty) ...[
+            if (resource.description != null &&
+                resource.description!.isNotEmpty) ...[
               const Text(
                 'نبذة عن المحتوى:',
                 style: TextStyle(
@@ -214,7 +238,8 @@ class ResourceDetailSheet extends StatelessWidget {
               const SizedBox(height: 16),
             ],
 
-            if (resource.textContent != null && resource.textContent!.isNotEmpty) ...[
+            if (resource.textContent != null &&
+                resource.textContent!.isNotEmpty) ...[
               const Text(
                 'نص الفائدة / الاقتباس:',
                 style: TextStyle(
@@ -228,7 +253,8 @@ class ResourceDetailSheet extends StatelessWidget {
                 width: double.infinity,
                 padding: const EdgeInsets.all(14),
                 decoration: BoxDecoration(
-                  color: (isDark ? Colors.black : Colors.amber.shade50).withValues(alpha: 0.3),
+                  color: (isDark ? Colors.black : Colors.amber.shade50)
+                      .withValues(alpha: 0.3),
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(color: radiantGold.withValues(alpha: 0.3)),
                 ),
@@ -245,11 +271,14 @@ class ResourceDetailSheet extends StatelessWidget {
             ],
 
             // Archive.org Reference details
-            if (resource.archiveUrl != null && resource.archiveUrl!.isNotEmpty) ...[
+            if (resource.archiveUrl != null &&
+                resource.archiveUrl!.isNotEmpty) ...[
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: (isDark ? Colors.white : Colors.black).withValues(alpha: 0.04),
+                  color: (isDark ? Colors.white : Colors.black).withValues(
+                    alpha: 0.04,
+                  ),
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(color: Colors.grey.withValues(alpha: 0.2)),
                 ),
@@ -264,10 +293,16 @@ class ResourceDetailSheet extends StatelessWidget {
                       ),
                     ),
                     IconButton(
-                      icon: const Icon(Icons.copy, size: 16, color: radiantGold),
+                      icon: const Icon(
+                        Icons.copy,
+                        size: 16,
+                        color: radiantGold,
+                      ),
                       tooltip: 'نسخ الرابط المباشر',
                       onPressed: () {
-                        Clipboard.setData(ClipboardData(text: resource.archiveUrl!));
+                        Clipboard.setData(
+                          ClipboardData(text: resource.archiveUrl!),
+                        );
                         ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(
                             content: Text('تم نسخ رابط الأرشيف بنجاح'),
@@ -295,15 +330,20 @@ class ResourceDetailSheet extends StatelessWidget {
                         ),
                         padding: const EdgeInsets.symmetric(vertical: 12),
                       ),
-                      icon: const Icon(Icons.open_in_browser, size: 18, color: radiantGold),
+                      icon: const Icon(
+                        Icons.open_in_browser,
+                        size: 18,
+                        color: radiantGold,
+                      ),
                       label: const Text(
                         'عرض في Archive.org',
                         style: TextStyle(fontSize: 12, color: radiantGold),
                       ),
                       onPressed: () {
-                        final details = ArchiveUploadService.getDetailsUrlFromDirectUrl(
-                          resource.archiveUrl,
-                        );
+                        final details =
+                            ArchiveUploadService.getDetailsUrlFromDirectUrl(
+                              resource.archiveUrl,
+                            );
                         if (details != null) {
                           launchUrl(
                             Uri.parse(details),
@@ -326,7 +366,10 @@ class ResourceDetailSheet extends StatelessWidget {
                       padding: const EdgeInsets.symmetric(vertical: 12),
                     ),
                     onPressed: () => Navigator.pop(context),
-                    child: const Text('إغلاق', style: TextStyle(fontWeight: FontWeight.bold)),
+                    child: const Text(
+                      'إغلاق',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
                   ),
                 ),
               ],

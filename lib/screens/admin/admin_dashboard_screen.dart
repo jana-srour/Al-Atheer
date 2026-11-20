@@ -1084,7 +1084,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(
-                    res.category,
+                    res.folderLabel,
                     style: const TextStyle(
                       fontSize: 11,
                       fontWeight: FontWeight.w600,
@@ -1249,6 +1249,7 @@ class _ResourceEditDialogState extends State<ResourceEditDialog> {
   late TextEditingController _textCtrl;
   late String _type;
   late String _category;
+  late String _subfolder;
   late List<ResourceAttachment> _attachments;
   String? _coverImageUrl;
   bool _coverImageHidden = false;
@@ -1272,6 +1273,7 @@ class _ResourceEditDialogState extends State<ResourceEditDialog> {
     _coverImageUrl = widget.resourceToEdit.coverImageUrl;
     _coverImageHidden = widget.resourceToEdit.coverImageHidden;
     _category = widget.resourceToEdit.category;
+    _subfolder = widget.resourceToEdit.subfolder ?? '';
   }
 
   @override
@@ -1301,6 +1303,7 @@ class _ResourceEditDialogState extends State<ResourceEditDialog> {
                 : null,
             'type': _type,
             'category': _category,
+            'subfolder': _subfolder,
             'cover_image_url': _type == 'post' ? _coverImageUrl : null,
             'cover_image_hidden': _type == 'post' && _coverImageHidden,
             if (_type == 'post')
@@ -1326,6 +1329,15 @@ class _ResourceEditDialogState extends State<ResourceEditDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final subfolders = Provider.of<ResourceProvider>(
+      context,
+    ).subfoldersForCategory(_category);
+    final subfolderOptions = <String>[
+      '',
+      ...subfolders,
+      if (_subfolder.isNotEmpty && !subfolders.contains(_subfolder)) _subfolder,
+    ];
+
     return AlertDialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       title: const Text('تعديل بيانات المادة'),
@@ -1374,9 +1386,33 @@ class _ResourceEditDialogState extends State<ResourceEditDialog> {
                 validator: (value) =>
                     value == null ? 'أضف تصنيفاً أولاً' : null,
                 onChanged: (v) {
-                  if (v != null) setState(() => _category = v);
+                  if (v != null) {
+                    setState(() {
+                      _category = v;
+                      _subfolder = '';
+                    });
+                  }
                 },
               ),
+              if (subfolders.isNotEmpty || _subfolder.isNotEmpty) ...[
+                const SizedBox(height: 12),
+                DropdownButtonFormField<String>(
+                  initialValue: _subfolder,
+                  decoration: const InputDecoration(labelText: 'المجلد الفرعي'),
+                  items: subfolderOptions
+                      .map(
+                        (subfolder) => DropdownMenuItem(
+                          value: subfolder,
+                          child: Text(
+                            subfolder.isEmpty ? 'المجلد الرئيسي' : subfolder,
+                          ),
+                        ),
+                      )
+                      .toList(),
+                  onChanged: (value) =>
+                      setState(() => _subfolder = value ?? ''),
+                ),
+              ],
               const SizedBox(height: 12),
               if (_type != 'text') ...[
                 TextFormField(
@@ -1735,6 +1771,14 @@ class _CategoryManagerDialogState extends State<CategoryManagerDialog> {
     }
   }
 
+  Future<void> _manageSubfolders(String category) async {
+    await showDialog<void>(
+      context: context,
+      builder: (_) => SubfolderManagerDialog(category: category),
+    );
+    widget.onChanged();
+  }
+
   @override
   Widget build(BuildContext context) {
     const radiantGold = Color(0xFFF59E0B);
@@ -1816,6 +1860,14 @@ class _CategoryManagerDialogState extends State<CategoryManagerDialog> {
                         spacing: 0,
                         children: [
                           IconButton(
+                            tooltip: 'إدارة المجلدات الفرعية',
+                            icon: const Icon(
+                              Icons.create_new_folder_outlined,
+                              size: 20,
+                            ),
+                            onPressed: () => _manageSubfolders(cat),
+                          ),
+                          IconButton(
                             tooltip: 'تعديل اسم التصنيف',
                             icon: const Icon(Icons.edit_outlined, size: 20),
                             onPressed: () => _renameCategory(cat),
@@ -1834,6 +1886,220 @@ class _CategoryManagerDialogState extends State<CategoryManagerDialog> {
                     );
                   },
                 ),
+              ),
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('إغلاق'),
+        ),
+      ],
+    );
+  }
+}
+
+class SubfolderManagerDialog extends StatefulWidget {
+  final String category;
+
+  const SubfolderManagerDialog({super.key, required this.category});
+
+  @override
+  State<SubfolderManagerDialog> createState() => _SubfolderManagerDialogState();
+}
+
+class _SubfolderManagerDialogState extends State<SubfolderManagerDialog> {
+  final _controller = TextEditingController();
+  bool _isSaving = false;
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  Future<void> _addSubfolder() async {
+    final name = _controller.text.trim();
+    if (name.isEmpty) return;
+    setState(() => _isSaving = true);
+    try {
+      await Provider.of<ResourceProvider>(
+        context,
+        listen: false,
+      ).addSubfolder(widget.category, name);
+      _controller.clear();
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('تعذر إضافة المجلد الفرعي: $error')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isSaving = false);
+    }
+  }
+
+  Future<void> _deleteSubfolder(String name) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('حذف المجلد الفرعي؟'),
+        content: Text(
+          'سيتم نقل محتوى "$name" إلى المجلد الرئيسي. هل تريد المتابعة؟',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('إلغاء'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('حذف'),
+          ),
+        ],
+      ),
+    );
+    if (!mounted || confirmed != true) return;
+
+    setState(() => _isSaving = true);
+    try {
+      await Provider.of<ResourceProvider>(
+        context,
+        listen: false,
+      ).deleteSubfolder(widget.category, name);
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('تعذر حذف المجلد الفرعي: $error')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isSaving = false);
+    }
+  }
+
+  Future<void> _renameSubfolder(String oldName) async {
+    final controller = TextEditingController(text: oldName);
+    final newName = await showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('تعديل اسم المجلد الفرعي'),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          decoration: const InputDecoration(labelText: 'اسم المجلد الفرعي'),
+          onSubmitted: (value) => Navigator.pop(context, value.trim()),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('إلغاء'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, controller.text.trim()),
+            child: const Text('حفظ'),
+          ),
+        ],
+      ),
+    );
+    controller.dispose();
+    if (!mounted || newName == null || newName.isEmpty || newName == oldName) {
+      return;
+    }
+
+    setState(() => _isSaving = true);
+    try {
+      await Provider.of<ResourceProvider>(
+        context,
+        listen: false,
+      ).renameSubfolder(widget.category, oldName, newName);
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('تعذر تعديل اسم المجلد الفرعي: $error')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isSaving = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final subfolders = Provider.of<ResourceProvider>(
+      context,
+    ).subfoldersForCategory(widget.category);
+
+    return AlertDialog(
+      title: Text('المجلدات الفرعية: ${widget.category}'),
+      content: SizedBox(
+        width: double.maxFinite,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _controller,
+                    decoration: const InputDecoration(
+                      labelText: 'اسم المجلد الفرعي',
+                    ),
+                    onSubmitted: (_) => _addSubfolder(),
+                  ),
+                ),
+                IconButton(
+                  tooltip: 'إضافة مجلد فرعي',
+                  onPressed: _isSaving ? null : _addSubfolder,
+                  icon: const Icon(Icons.add),
+                ),
+              ],
+            ),
+            if (_isSaving) const LinearProgressIndicator(),
+            ConstrainedBox(
+              constraints: const BoxConstraints(maxHeight: 240),
+              child: ListView(
+                shrinkWrap: true,
+                children: [
+                  for (final subfolder in subfolders)
+                    ListTile(
+                      dense: true,
+                      leading: const Icon(Icons.folder_outlined),
+                      title: Text(subfolder),
+                      trailing: Wrap(
+                        spacing: 0,
+                        children: [
+                          IconButton(
+                            tooltip: 'تعديل اسم المجلد الفرعي',
+                            onPressed: _isSaving
+                                ? null
+                                : () => _renameSubfolder(subfolder),
+                            icon: const Icon(Icons.edit_outlined),
+                          ),
+                          IconButton(
+                            tooltip: 'حذف المجلد الفرعي',
+                            onPressed: _isSaving
+                                ? null
+                                : () => _deleteSubfolder(subfolder),
+                            icon: const Icon(
+                              Icons.delete_outline,
+                              color: Colors.redAccent,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  if (subfolders.isEmpty)
+                    const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 20),
+                      child: Text(
+                        'لا توجد مجلدات فرعية لهذا التصنيف بعد.',
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                ],
               ),
             ),
           ],

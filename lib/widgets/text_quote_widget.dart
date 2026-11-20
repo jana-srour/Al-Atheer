@@ -31,9 +31,8 @@ class _TextQuoteWidgetState extends State<TextQuoteWidget> {
     final settings = Provider.of<SettingsProvider>(context);
     final isFav = settings.isFavorite(widget.resource.id);
 
-    final displayContent = widget.resource.textContent ??
-        widget.resource.description ??
-        '';
+    final displayContent =
+        widget.resource.textContent ?? widget.resource.description ?? '';
 
     return Card(
       margin: const EdgeInsets.symmetric(vertical: 7),
@@ -93,7 +92,7 @@ class _TextQuoteWidgetState extends State<TextQuoteWidget> {
                         ),
                         const SizedBox(width: 5),
                         Text(
-                          widget.resource.category,
+                          widget.resource.folderLabel,
                           style: const TextStyle(
                             fontSize: 11,
                             fontWeight: FontWeight.bold,
@@ -129,7 +128,8 @@ class _TextQuoteWidgetState extends State<TextQuoteWidget> {
                         ),
                         tooltip: 'حفظ في المفضلة',
                         visualDensity: VisualDensity.compact,
-                        onPressed: () => settings.toggleFavorite(widget.resource.id),
+                        onPressed: () =>
+                            settings.toggleFavorite(widget.resource.id),
                       ),
                       IconButton(
                         icon: const Icon(Icons.copy_rounded, size: 17),
@@ -226,7 +226,10 @@ class _TextQuoteWidgetState extends State<TextQuoteWidget> {
                     icon: const Icon(Icons.auto_stories, size: 14),
                     label: const Text(
                       'عرض الفائدة كاملة',
-                      style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                     onPressed: () => Navigator.push(
                       context,

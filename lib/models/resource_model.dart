@@ -35,6 +35,7 @@ class ResourceModel {
   final String? coverImageUrl;
   final bool coverImageHidden;
   final String category;
+  final String? subfolder;
   final DateTime createdAt;
 
   ResourceModel({
@@ -48,6 +49,7 @@ class ResourceModel {
     this.coverImageUrl,
     this.coverImageHidden = false,
     required this.category,
+    this.subfolder,
     required this.createdAt,
   });
 
@@ -85,6 +87,10 @@ class ResourceModel {
       coverImageUrl: json['cover_image_url']?.toString(),
       coverImageHidden: json['cover_image_hidden'] == true,
       category: json['category']?.toString() ?? '',
+      subfolder: switch (json['subfolder']?.toString().trim()) {
+        null || '' => null,
+        final value => value,
+      },
       createdAt: parsedDate,
     );
   }
@@ -105,8 +111,12 @@ class ResourceModel {
       'cover_image_url': coverImageUrl,
       'cover_image_hidden': coverImageHidden,
       'category': category,
+      'subfolder': subfolder ?? '',
     };
   }
+
+  String get folderLabel =>
+      subfolder == null ? category : '$category / $subfolder';
 
   String? get coverUrl {
     if (coverImageHidden) return null;

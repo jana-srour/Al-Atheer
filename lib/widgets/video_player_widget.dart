@@ -101,7 +101,7 @@ class VideoPlayerWidget extends StatelessWidget {
                             ),
                             const SizedBox(width: 5),
                             Text(
-                              resource.category,
+                              resource.folderLabel,
                               style: const TextStyle(
                                 fontSize: 11,
                                 fontWeight: FontWeight.bold,

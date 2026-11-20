@@ -300,91 +300,108 @@ class _HomeScreenState extends State<HomeScreen>
                     ),
                     const SizedBox(height: 10),
 
-                    // Category Pill Bar
+                    // Category and selected category's subfolder buttons
                     Directionality(
                       textDirection: TextDirection.rtl,
-                      child: SingleChildScrollView(
-                        scrollDirection: Axis.horizontal,
-                        child: Row(
-                          textDirection: TextDirection.rtl,
-                          children:
-                              resourceProv.categories.map((cat) {
-                                final isSelected =
-                                    resourceProv.selectedCategory == cat;
-                                return Padding(
-                                  padding: const EdgeInsetsDirectional.only(
-                                    end: 8,
-                                  ),
-                                  child: ChoiceChip(
-                                    label: Text(cat),
-                                    selected: isSelected,
-                                    onSelected: (_) =>
-                                        resourceProv.setCategoryFilter(cat),
-                                    selectedColor: deepNavy,
-                                    labelStyle: TextStyle(
-                                      fontSize: 12,
-                                      fontWeight: isSelected
-                                          ? FontWeight.bold
-                                          : FontWeight.normal,
-                                      color: isSelected
-                                          ? radiantGold
-                                          : (isDark
-                                                ? Colors.grey.shade300
-                                                : Colors.black87),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          SingleChildScrollView(
+                            scrollDirection: Axis.horizontal,
+                            child: Row(
+                              textDirection: TextDirection.rtl,
+                              children: [
+                                for (final category in resourceProv.categories)
+                                  Padding(
+                                    padding: const EdgeInsetsDirectional.only(
+                                      end: 8,
                                     ),
-                                    side: BorderSide(
-                                      color: isSelected
-                                          ? radiantGold
-                                          : (isDark
-                                                ? Colors.grey.shade800
-                                                : Colors.grey.shade300),
-                                      width: isSelected ? 1.4 : 1,
+                                    child: _buildFolderChip(
+                                      context,
+                                      category,
+                                      resourceProv.selectedCategory == category,
+                                      isDark,
+                                      deepNavy,
+                                      radiantGold,
+                                      () => resourceProv.setCategoryFilter(
+                                        category,
+                                      ),
                                     ),
                                   ),
-                                );
-                              }).toList()..add(
                                 Padding(
                                   padding: const EdgeInsetsDirectional.only(
                                     end: 8,
                                   ),
-                                  child: ChoiceChip(
-                                    label: Text(
-                                      AppStrings.of(context).text('home_all'),
-                                    ),
-                                    selected:
-                                        resourceProv.selectedCategory == null,
-                                    onSelected: (_) =>
-                                        resourceProv.setCategoryFilter(null),
-                                    selectedColor: deepNavy,
-                                    labelStyle: TextStyle(
-                                      fontSize: 12,
-                                      fontWeight:
-                                          resourceProv.selectedCategory == null
-                                          ? FontWeight.bold
-                                          : FontWeight.normal,
-                                      color:
-                                          resourceProv.selectedCategory == null
-                                          ? radiantGold
-                                          : (isDark
-                                                ? Colors.grey.shade300
-                                                : Colors.black87),
-                                    ),
-                                    side: BorderSide(
-                                      color:
-                                          resourceProv.selectedCategory == null
-                                          ? radiantGold
-                                          : (isDark
-                                                ? Colors.grey.shade800
-                                                : Colors.grey.shade300),
-                                      width:
-                                          resourceProv.selectedCategory == null
-                                          ? 1.4
-                                          : 1,
-                                    ),
+                                  child: _buildFolderChip(
+                                    context,
+                                    AppStrings.of(context).text('home_all'),
+                                    resourceProv.selectedCategory == null,
+                                    isDark,
+                                    deepNavy,
+                                    radiantGold,
+                                    () => resourceProv.setCategoryFilter(null),
                                   ),
                                 ),
+                              ],
+                            ),
+                          ),
+                          if (resourceProv.selectedCategory != null &&
+                              resourceProv
+                                  .subfoldersForCategory(
+                                    resourceProv.selectedCategory!,
+                                  )
+                                  .isNotEmpty) ...[
+                            const SizedBox(height: 4),
+                            Padding(
+                              padding: const EdgeInsetsDirectional.only(
+                                start: 16,
                               ),
-                        ),
+                              child: SingleChildScrollView(
+                                scrollDirection: Axis.horizontal,
+                                child: Row(
+                                  textDirection: TextDirection.rtl,
+                                  children: [
+                                    _buildFolderChip(
+                                      context,
+                                      'المجلد الرئيسي',
+                                      resourceProv.selectedSubfolder == '',
+                                      isDark,
+                                      deepNavy,
+                                      radiantGold,
+                                      () => resourceProv.setSubfolderFilter(
+                                        resourceProv.selectedCategory!,
+                                        '',
+                                      ),
+                                    ),
+                                    for (final subfolder
+                                        in resourceProv.subfoldersForCategory(
+                                          resourceProv.selectedCategory!,
+                                        ))
+                                      Padding(
+                                        padding:
+                                            const EdgeInsetsDirectional.only(
+                                              end: 8,
+                                            ),
+                                        child: _buildFolderChip(
+                                          context,
+                                          subfolder,
+                                          resourceProv.selectedSubfolder ==
+                                              subfolder,
+                                          isDark,
+                                          deepNavy,
+                                          radiantGold,
+                                          () => resourceProv.setSubfolderFilter(
+                                            resourceProv.selectedCategory!,
+                                            subfolder,
+                                          ),
+                                        ),
+                                      ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ],
+                        ],
                       ),
                     ),
                   ],
@@ -624,6 +641,36 @@ class _HomeScreenState extends State<HomeScreen>
               label: const Text('نشر مادة جديدة'),
             )
           : null,
+    );
+  }
+
+  Widget _buildFolderChip(
+    BuildContext context,
+    String label,
+    bool selected,
+    bool isDark,
+    Color deepNavy,
+    Color radiantGold,
+    VoidCallback onSelected,
+  ) {
+    return ChoiceChip(
+      label: Text(label),
+      selected: selected,
+      onSelected: (_) => onSelected(),
+      selectedColor: deepNavy,
+      labelStyle: TextStyle(
+        fontSize: 12,
+        fontWeight: selected ? FontWeight.bold : FontWeight.normal,
+        color: selected
+            ? radiantGold
+            : (isDark ? Colors.grey.shade300 : Colors.black87),
+      ),
+      side: BorderSide(
+        color: selected
+            ? radiantGold
+            : (isDark ? Colors.grey.shade800 : Colors.grey.shade300),
+        width: selected ? 1.4 : 1,
+      ),
     );
   }
 }

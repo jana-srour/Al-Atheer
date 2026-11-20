@@ -85,6 +85,18 @@ in the Supabase SQL Editor before using content ordering. It adds persistent
 ordering to categories, playlists, and library resources while preserving the
 existing order of playlist items.
 
+Run
+[`supabase/migrations/20261120000000_add_category_subfolders.sql`](./supabase/migrations/20261120000000_add_category_subfolders.sql)
+in the Supabase SQL Editor to enable category subfolders. Administrators can
+manage them from the category manager, assign resources to a subfolder while
+publishing or editing, and filter the home library by a category, its root, or
+one of its subfolders.
+
+Run
+[`supabase/migrations/20261120000001_rename_category_subfolder.sql`](./supabase/migrations/20261120000001_rename_category_subfolder.sql)
+to enable subfolder renaming. This is a separate migration so it can also be
+applied to projects that already installed the initial subfolder migration.
+
 The admin category manager supports renaming a category and updates the
 category value on all library resources and Azkar in the same database
 transaction. Existing posts remain editable and deletable from the resource

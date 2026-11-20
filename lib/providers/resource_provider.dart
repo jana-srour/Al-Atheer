@@ -25,6 +25,7 @@ class ResourceProvider extends ChangeNotifier {
   String _selectedType =
       'all'; // 'all', 'audio', 'video', 'pdf', 'text', 'favorites'
   String _searchQuery = '';
+  String? _selectedSubfolder;
 
   // Cache of URLs that have been verified ready via HTTP check
   final Set<String> _readyUrlCache = {};
@@ -52,11 +53,16 @@ class ResourceProvider extends ChangeNotifier {
   bool get isLoadingPlaylists => _isLoadingPlaylists;
   bool get isLoading => _isLoading;
   String? get selectedCategory => _selectedCategory;
+  String? get selectedSubfolder => _selectedSubfolder;
   String get selectedType => _selectedType;
   String get searchQuery => _searchQuery;
 
   List<String> _categories = [];
   List<String> get categories => _categories;
+  Map<String, List<String>> _subfoldersByCategory = {};
+
+  List<String> subfoldersForCategory(String category) =>
+      _subfoldersByCategory[category] ?? const [];
 
   ResourceProvider() {
     fetchCategories();
@@ -125,18 +131,29 @@ class ResourceProvider extends ChangeNotifier {
     try {
       final response = await _supabase
           .from('categories')
-          .select('name')
+          .select('name, subfolders')
           .order('sort_order', ascending: true)
           .order('name', ascending: true);
       final List<dynamic> dataList = response as List<dynamic>;
-      _categories = dataList
-          .map((c) => c['name']?.toString() ?? '')
-          .where((name) => name.isNotEmpty)
-          .toList();
+      _categories = [];
+      _subfoldersByCategory = {};
+      for (final category in dataList) {
+        final name = category['name']?.toString() ?? '';
+        if (name.isEmpty) continue;
+        _categories.add(name);
+        final rawSubfolders = category['subfolders'];
+        _subfoldersByCategory[name] = rawSubfolders is List
+            ? rawSubfolders
+                  .map((subfolder) => subfolder.toString())
+                  .where((subfolder) => subfolder.isNotEmpty)
+                  .toList()
+            : [];
+      }
       notifyListeners();
     } catch (e) {
       debugPrint('Error fetching categories: $e');
       _categories = [];
+      _subfoldersByCategory = {};
       notifyListeners();
     }
   }
@@ -231,6 +248,13 @@ class ResourceProvider extends ChangeNotifier {
 
   void setCategoryFilter(String? category) {
     _selectedCategory = category;
+    _selectedSubfolder = null;
+    fetchResources();
+  }
+
+  void setSubfolderFilter(String category, String subfolder) {
+    _selectedCategory = category;
+    _selectedSubfolder = subfolder;
     fetchResources();
   }
 
@@ -241,6 +265,7 @@ class ResourceProvider extends ChangeNotifier {
 
   void resetResourceFilters() {
     _selectedCategory = null;
+    _selectedSubfolder = null;
     _selectedType = 'all';
     _searchQuery = '';
     fetchResources();
@@ -260,6 +285,10 @@ class ResourceProvider extends ChangeNotifier {
       final selectedCategory = _selectedCategory;
       if (selectedCategory != null) {
         queryBuilder = queryBuilder.eq('category', selectedCategory);
+      }
+      final selectedSubfolder = _selectedSubfolder;
+      if (selectedSubfolder != null) {
+        queryBuilder = queryBuilder.eq('subfolder', selectedSubfolder);
       }
 
       if (_searchQuery.trim().isNotEmpty) {
@@ -290,6 +319,63 @@ class ResourceProvider extends ChangeNotifier {
       debugPrint('Error adding resource: $e');
       return false;
     }
+  }
+
+  Future<void> addSubfolder(String category, String name) async {
+    final trimmedName = name.trim();
+    if (trimmedName.isEmpty) {
+      throw ArgumentError('Subfolder name cannot be empty.');
+    }
+
+    final subfolders = List<String>.of(subfoldersForCategory(category));
+    if (subfolders.contains(trimmedName)) {
+      throw StateError('A subfolder with this name already exists.');
+    }
+    subfolders.add(trimmedName);
+    await _supabase
+        .from('categories')
+        .update({'subfolders': subfolders})
+        .eq('name', category)
+        .select('name')
+        .single();
+    await fetchCategories();
+  }
+
+  Future<void> deleteSubfolder(String category, String name) async {
+    final subfolders = List<String>.of(subfoldersForCategory(category));
+    if (!subfolders.remove(name)) return;
+
+    await _supabase.rpc(
+      'delete_category_subfolder',
+      params: {'p_category_name': category, 'p_subfolder_name': name},
+    );
+    await Future.wait([fetchCategories(), fetchResources()]);
+  }
+
+  Future<void> renameSubfolder(
+    String category,
+    String oldName,
+    String newName,
+  ) async {
+    final trimmedName = newName.trim();
+    if (trimmedName.isEmpty) {
+      throw ArgumentError('Subfolder name cannot be empty.');
+    }
+
+    final subfolders = subfoldersForCategory(category);
+    if (trimmedName != oldName && subfolders.contains(trimmedName)) {
+      throw StateError('A subfolder with this name already exists.');
+    }
+
+    await _supabase.rpc(
+      'rename_category_subfolder',
+      params: {
+        'p_category_name': category,
+        'p_old_subfolder_name': oldName,
+        'p_new_subfolder_name': trimmedName,
+      },
+    );
+    await Future.wait([fetchCategories(), fetchResources()]);
   }
 
   Future<bool> deleteResource(int id) async {

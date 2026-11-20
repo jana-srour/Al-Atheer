@@ -23,9 +23,7 @@ class AudioPlayerWidget extends StatelessWidget {
 
     Navigator.push(
       context,
-      MaterialPageRoute(
-        builder: (_) => AudioPlayerScreen(resource: resource),
-      ),
+      MaterialPageRoute(builder: (_) => AudioPlayerScreen(resource: resource)),
     );
   }
 
@@ -103,7 +101,7 @@ class AudioPlayerWidget extends StatelessWidget {
                             ),
                             const SizedBox(width: 5),
                             Text(
-                              resource.category,
+                              resource.folderLabel,
                               style: const TextStyle(
                                 fontSize: 11,
                                 fontWeight: FontWeight.bold,
@@ -154,7 +152,10 @@ class AudioPlayerWidget extends StatelessWidget {
                       else
                         Text(
                           resource.formattedDate,
-                          style: const TextStyle(fontSize: 11, color: Colors.grey),
+                          style: const TextStyle(
+                            fontSize: 11,
+                            color: Colors.grey,
+                          ),
                         ),
                     ],
                   ),
@@ -238,7 +239,9 @@ class AudioPlayerWidget extends StatelessWidget {
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(
                             fontSize: 11,
-                            color: isDark ? Colors.grey.shade400 : Colors.grey.shade600,
+                            color: isDark
+                                ? Colors.grey.shade400
+                                : Colors.grey.shade600,
                           ),
                         ),
                       ],

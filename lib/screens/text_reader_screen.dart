@@ -13,7 +13,11 @@ class TextReaderScreen extends StatelessWidget {
         : resource.description ?? '';
     return Scaffold(
       appBar: AppBar(
-        title: Text(resource.title, maxLines: 1, overflow: TextOverflow.ellipsis),
+        title: Text(
+          resource.title,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        ),
       ),
       body: Center(
         child: ConstrainedBox(
@@ -24,7 +28,7 @@ class TextReaderScreen extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 Text(
-                  resource.category,
+                  resource.folderLabel,
                   style: Theme.of(context).textTheme.labelLarge,
                   textAlign: TextAlign.center,
                 ),
@@ -32,10 +36,9 @@ class TextReaderScreen extends StatelessWidget {
                 SelectableText(
                   text,
                   textAlign: TextAlign.start,
-                  style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                    height: 1.9,
-                    fontSize: 18,
-                  ),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.bodyLarge?.copyWith(height: 1.9, fontSize: 18),
                 ),
               ],
             ),

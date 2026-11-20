@@ -342,7 +342,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
                                     ),
                                     const SizedBox(width: 6),
                                     Text(
-                                      widget.resource.category,
+                                      widget.resource.folderLabel,
                                       maxLines: 1,
                                       overflow: TextOverflow.ellipsis,
                                       style: const TextStyle(

@@ -67,6 +67,29 @@ void main() {
     ]);
   });
 
+  test('subfolder is optional and appears in the displayed folder label', () {
+    final rootResource = ResourceModel.fromJson({
+      'id': 12,
+      'title': 'Root image',
+      'type': 'image',
+      'category': 'Fiqh',
+      'created_at': '2025-01-01T00:00:00Z',
+    });
+    final nestedResource = ResourceModel.fromJson({
+      'id': 13,
+      'title': 'Nested image',
+      'type': 'image',
+      'category': 'Fiqh',
+      'subfolder': 'Prayer',
+      'created_at': '2025-01-01T00:00:00Z',
+    });
+
+    expect(rootResource.subfolder, isNull);
+    expect(rootResource.folderLabel, 'Fiqh');
+    expect(rootResource.toJson()['subfolder'], '');
+    expect(nestedResource.folderLabel, 'Fiqh / Prayer');
+  });
+
   test('post cover override and removal are honored', () {
     final resource = ResourceModel.fromJson({
       'id': 9,
